@@ -90,6 +90,8 @@ model Subscription {
   plan                   SubscriptionPlan
   status                 SubscriptionStatus @default(PENDING)
   provider               String             @default("mercadopago")
+  /// Referencia que enviamos al proveedor; Mercado Pago la repite en cada cobro recurrente.
+  externalReference      String             @unique
   providerSubscriptionId String?
   /// Fin del período pagado: el acceso Pro se mantiene hasta esta fecha aun si se cancela.
   currentPeriodEnd       DateTime?          @db.Timestamptz(3)

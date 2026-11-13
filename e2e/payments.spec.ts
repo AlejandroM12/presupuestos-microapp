@@ -101,4 +101,47 @@ test.describe("pagos (sin credenciales de Mercado Pago)", () => {
     await expect(buy).toHaveAttribute("href", /\/registro\?next=%2Fcrear/);
     void isMobile;
   });
+
+  test("la suscripción Pro exige sesión, valida el plan y avisa si los pagos están deshabilitados", async ({
+    browser,
+    request,
+  }) => {
+    expect(
+      (await request.post("/api/billing/subscription", { data: { plan: "MONTHLY" } })).status(),
+    ).toBe(401);
+    expect((await request.delete("/api/billing/subscription")).status()).toBe(401);
+
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.goto("/registro?next=/dashboard");
+    await page
+      .getByLabel("Email")
+      .fill(`sub-${Date.now()}-${Math.floor(Math.random() * 1e6)}@e2e.example`);
+    await page.getByLabel("Contraseña").fill("clave-e2e-segura-1");
+    await page.getByRole("button", { name: "Crear cuenta" }).click();
+    await page.waitForURL((url) => url.pathname === "/dashboard");
+
+    expect(
+      (await page.request.post("/api/billing/subscription", { data: { plan: "WEEKLY" } })).status(),
+    ).toBe(422);
+    const res = await page.request.post("/api/billing/subscription", { data: { plan: "YEARLY" } });
+    expect(res.status()).toBe(503);
+    expect((await res.json()).code).toBe("payments_disabled");
+    // sin suscripción vigente no hay nada que cancelar
+    expect((await page.request.delete("/api/billing/subscription")).status()).toBe(404);
+  });
+
+  test("la tarea de facturación exige el secreto de cron", async ({ request }) => {
+    expect((await request.post("/api/cron/billing")).status()).toBe(401);
+    expect(
+      (
+        await request.post("/api/cron/billing", { headers: { authorization: "Bearer incorrecto" } })
+      ).status(),
+    ).toBe(401);
+    const ok = await request.post("/api/cron/billing", {
+      headers: { authorization: "Bearer e2e-cron-secret" },
+    });
+    expect(ok.status()).toBe(200);
+    expect(typeof (await ok.json()).expired).toBe("number");
+  });
 });

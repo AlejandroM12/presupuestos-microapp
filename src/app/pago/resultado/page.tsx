@@ -6,11 +6,18 @@ import { PaymentStatusPoller } from "@/components/billing/payment-status-poller"
 import { buttonVariants } from "@/components/ui/button";
 import { getGateway } from "@/integrations/mercadopago";
 import { requireUser } from "@/server/auth/session";
+import { isSubscriptionActive } from "@/domain/subscription";
 import { latestPackPayment, processPaymentNotification } from "@/services/billing";
+import { currentSubscription, reconcileUserSubscription } from "@/services/subscriptions";
 
 export const metadata: Metadata = { title: "Resultado del pago", robots: { index: false } };
 
-type Params = { kind?: string; payment_id?: string; collection_id?: string };
+type Params = {
+  kind?: string;
+  payment_id?: string;
+  collection_id?: string;
+  preapproval_id?: string;
+};
 
 /**
  * El regreso desde Mercado Pago NO activa nada por sí mismo: si trae un identificador de
@@ -22,16 +29,28 @@ export default async function ResultPage({ searchParams }: { searchParams: Promi
   const params = await searchParams;
   const paymentId = params.payment_id ?? params.collection_id;
 
-  if (paymentId && /^\d{1,20}$/.test(paymentId) && getGateway()) {
+  const isPro = params.kind === "pro";
+  if (getGateway()) {
     try {
-      await processPaymentNotification(paymentId, { onlyForUserId: user.id });
+      if (isPro && params.preapproval_id && /^[\w-]{1,64}$/.test(params.preapproval_id)) {
+        await reconcileUserSubscription(user.id, params.preapproval_id);
+      }
+      if (paymentId && /^\d{1,20}$/.test(paymentId)) {
+        await processPaymentNotification(paymentId, { onlyForUserId: user.id });
+      }
     } catch (error) {
       console.error("return_reconcile_failed", error instanceof Error ? error.message : "unknown");
     }
   }
 
-  const payment = await latestPackPayment(user.id);
-  const status = payment?.status ?? null;
+  let status: "APPROVED" | "REJECTED" | "CANCELLED" | "REFUNDED" | "PENDING" | null;
+  if (isPro) {
+    const sub = await currentSubscription(user.id);
+    status = sub && isSubscriptionActive(sub) ? "APPROVED" : sub ? "PENDING" : null;
+  } else {
+    status = (await latestPackPayment(user.id))?.status ?? null;
+  }
+  const product = isPro ? "plan Pro" : "Pack Premium";
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -44,10 +63,12 @@ export default async function ResultPage({ searchParams }: { searchParams: Promi
             <>
               <CheckCircle2 className="mx-auto size-10 text-brand" aria-hidden />
               <h1 className="mt-4 font-display text-2xl font-semibold text-ink">
-                ¡Pack Premium activado!
+                ¡{isPro ? "Plan Pro activado" : "Pack Premium activado"}!
               </h1>
               <p className="mt-2 text-sm text-muted-foreground">
-                Ya podés usar los 5 diseños premium y descargar sin la marca de AtajoLab.
+                {isPro
+                  ? "Ya tenés descargas ilimitadas, todos los diseños, historial en la nube y dashboard."
+                  : "Ya podés usar los 5 diseños premium y descargar sin la marca de AtajoLab."}
               </p>
               <Link
                 href="/crear"
@@ -79,8 +100,8 @@ export default async function ResultPage({ searchParams }: { searchParams: Promi
                 Estamos confirmando tu pago
               </h1>
               <p className="mt-2 text-sm text-muted-foreground">
-                Puede demorar unos minutos. No hace falta que hagas nada: activamos el Pack apenas
-                Mercado Pago lo confirme.
+                Puede demorar unos minutos. No hace falta que hagas nada: activamos tu {product}{" "}
+                apenas Mercado Pago lo confirme.
               </p>
               <PaymentStatusPoller />
               <Link

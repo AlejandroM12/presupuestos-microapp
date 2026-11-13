@@ -2,47 +2,21 @@ import { randomUUID } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import { getMailer } from "@/integrations/email/mailer";
 import { packPurchasedEmail } from "@/integrations/email/templates";
-import {
-  mapPaymentStatus,
-  type GatewayPayment,
-  type PaymentGateway,
-} from "@/integrations/mercadopago/gateway";
-import { getGateway } from "@/integrations/mercadopago";
+import { mapPaymentStatus, type GatewayPayment } from "@/integrations/mercadopago/gateway";
 import { PRICING } from "@/lib/config/plans";
-import { siteConfig } from "@/lib/config/site";
 import { db } from "@/server/db";
 import { PREMIUM_PACK } from "./access";
+import {
+  AlreadyOwnedError,
+  notificationUrl,
+  PaymentsDisabledError,
+  requireGateway,
+  returnUrls,
+  SuspiciousPaymentError,
+} from "./billing-common";
+import { applyRemoteSubscription, applyRemoteSubscriptionPayment } from "./subscriptions";
 
-export class PaymentsDisabledError extends Error {
-  constructor() {
-    super("Los pagos no están configurados");
-  }
-}
-export class AlreadyOwnedError extends Error {
-  constructor() {
-    super("Ya tenés el Pack Premium");
-  }
-}
-/** El pago informado no coincide con lo esperado (importe, moneda o identificador repetido). */
-export class SuspiciousPaymentError extends Error {}
-
-export function requireGateway(): PaymentGateway {
-  const gateway = getGateway();
-  if (!gateway) throw new PaymentsDisabledError();
-  return gateway;
-}
-
-function returnUrls(kind: string) {
-  const base = `${siteConfig.url}/pago/resultado?kind=${kind}`;
-  return {
-    success: `${base}&status=success`,
-    pending: `${base}&status=pending`,
-    failure: `${base}&status=failure`,
-  };
-}
-
-export const notificationUrl = () =>
-  siteConfig.url.startsWith("https://") ? `${siteConfig.url}/api/webhooks/mercadopago` : null;
+export { AlreadyOwnedError, PaymentsDisabledError, SuspiciousPaymentError };
 
 /**
  * Inicia la compra del Pack Premium. El importe sale siempre de la configuración del servidor
@@ -87,7 +61,8 @@ export async function startPackCheckout(user: {
   }
 }
 
-export type ProcessOutcome = "ignored" | "recorded" | "granted" | "revoked";
+export type ProcessOutcome =
+  "ignored" | "recorded" | "granted" | "revoked" | "activated" | "renewed" | "failed";
 
 /**
  * Aplica el estado real de un pago de Mercado Pago a nuestros registros.
@@ -99,6 +74,9 @@ export async function applyRemotePayment(
   options: { onlyForUserId?: string } = {},
 ): Promise<ProcessOutcome> {
   if (!remote.externalReference) return "ignored";
+  if (remote.externalReference.startsWith("sub_")) {
+    return applyRemoteSubscriptionPayment(remote, options);
+  }
   const row = await db.payment.findUnique({
     where: { externalReference: remote.externalReference },
   });
@@ -206,6 +184,12 @@ export async function handleWebhookNotification(input: WebhookInput): Promise<We
     if (input.type === "payment") {
       const outcome = await processPaymentNotification(input.dataId);
       result = outcome === "ignored" ? "ignored" : "processed";
+    } else if (input.type === "subscription_preapproval") {
+      const remote = await requireGateway().getSubscription(input.dataId);
+      if (remote) {
+        const outcome = await applyRemoteSubscription(remote);
+        result = outcome === "ignored" ? "ignored" : "processed";
+      }
     }
     await db.webhookEvent.update({
       where: { id: event.id },

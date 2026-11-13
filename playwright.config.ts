@@ -37,6 +37,7 @@ export default defineConfig({
       RATE_LIMIT_PDF_PER_MINUTE: "1000",
       MERCADOPAGO_WEBHOOK_SECRET: "e2e-webhook-secret",
       MERCADOPAGO_ACCESS_TOKEN: "",
+      CRON_SECRET: "e2e-cron-secret",
     },
     timeout: 120_000,
   },

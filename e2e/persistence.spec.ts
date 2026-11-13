@@ -61,8 +61,8 @@ async function newUser(
     await db(async (c) => {
       const { rows } = await c.query("SELECT id FROM users WHERE email = $1", [email]);
       await c.query(
-        `INSERT INTO subscriptions (id, "userId", plan, status, "currentPeriodEnd", "updatedAt")
-         VALUES (gen_random_uuid(), $1, 'MONTHLY', 'ACTIVE', now() + interval '20 days', now())`,
+        `INSERT INTO subscriptions (id, "userId", plan, status, "externalReference", "currentPeriodEnd", "updatedAt")
+         VALUES (gen_random_uuid(), $1, 'MONTHLY', 'ACTIVE', 'sub_e2e_' || gen_random_uuid()::text, now() + interval '20 days', now())`,
         [rows[0].id],
       );
     });

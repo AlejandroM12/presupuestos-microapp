@@ -69,3 +69,63 @@ export function packPurchasedEmail(to: string): EmailMessage {
     text: toText(content),
   };
 }
+
+const dateAr = (d: Date) =>
+  new Intl.DateTimeFormat("es-AR", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    timeZone: "America/Argentina/Buenos_Aires",
+  }).format(d);
+
+export function proActivatedEmail(
+  to: string,
+  plan: "MONTHLY" | "YEARLY",
+  until: Date,
+): EmailMessage {
+  const content: LayoutInput = {
+    preheader: "Tu plan Pro ya está activo.",
+    title: "¡Bienvenido a Pro!",
+    paragraphs: [
+      `Activamos tu plan Pro ${plan === "YEARLY" ? "anual" : "mensual"}. Ya tenés descargas ilimitadas, todos los diseños, historial en la nube, clientes y dashboard.`,
+      `Tu acceso está vigente hasta el ${dateAr(until)} y se renueva automáticamente mientras no canceles.`,
+    ],
+    cta: { label: "Ir a mi cuenta", url: `${siteConfig.url}/dashboard` },
+    footnote:
+      "Podés cancelar cuando quieras desde Mi plan. Conservás el acceso hasta el fin del período pagado.",
+  };
+  return { to, subject: "Tu plan Pro está activo", html: layout(content), text: toText(content) };
+}
+
+export function proCancelledEmail(to: string, until: Date): EmailMessage {
+  const content: LayoutInput = {
+    preheader: "Cancelaste tu plan Pro.",
+    title: "Cancelaste tu plan Pro",
+    paragraphs: [
+      `No vamos a renovar tu suscripción. Conservás el acceso a Pro hasta el ${dateAr(until)}.`,
+      "Después de esa fecha tu cuenta sigue activa: tus presupuestos quedan disponibles en modo lectura y conservás las compras únicas, como el Pack Premium.",
+    ],
+    cta: { label: "Ver mi plan", url: `${siteConfig.url}/dashboard/plan` },
+  };
+  return { to, subject: "Cancelaste tu plan Pro", html: layout(content), text: toText(content) };
+}
+
+export function paymentFailedEmail(to: string, until: Date | null): EmailMessage {
+  const content: LayoutInput = {
+    preheader: "No pudimos cobrar la renovación de tu plan Pro.",
+    title: "No pudimos cobrar tu renovación",
+    paragraphs: [
+      "Mercado Pago rechazó el cobro de tu plan Pro. Mercado Pago volverá a intentarlo; también podés actualizar tu medio de pago desde tu cuenta de Mercado Pago.",
+      until
+        ? `Mientras tanto conservás el acceso hasta el ${dateAr(until)}.`
+        : "Si el cobro no se concreta, el plan no se activará.",
+    ],
+    cta: { label: "Ver mi plan", url: `${siteConfig.url}/dashboard/plan` },
+  };
+  return {
+    to,
+    subject: "No pudimos cobrar tu plan Pro",
+    html: layout(content),
+    text: toText(content),
+  };
+}

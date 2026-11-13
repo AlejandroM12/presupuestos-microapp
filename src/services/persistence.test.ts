@@ -286,6 +286,7 @@ describe.skipIf(!enabled)("contexto de acceso (PostgreSQL)", () => {
         userId,
         plan: "MONTHLY",
         status: "CANCELLED",
+        externalReference: `sub_test_${userId}`,
         currentPeriodEnd: new Date("2026-07-01T00:00:00Z"),
       },
     });
