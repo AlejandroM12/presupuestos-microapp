@@ -88,7 +88,14 @@ export const issuerSchema = z.object({
   businessName: text(120).min(1, "Ingresá el nombre comercial"),
   professionalName: optionalText(120),
   /** Logo como data URL (ya validado y redimensionado en el cliente). */
-  logo: z.string().max(400_000, "El logo es demasiado pesado").default(""),
+  logo: z
+    .string()
+    .max(400_000, "El logo es demasiado pesado")
+    .refine(
+      (v) => v === "" || /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(v),
+      "Logo inválido",
+    )
+    .default(""),
   email: optionalEmail,
   phone,
   whatsapp: phone,

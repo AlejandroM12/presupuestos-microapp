@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Eraser, Eye, MessageCircle, Pencil } from "lucide-react";
+import { Download, Eraser, Eye, Loader2, MessageCircle, Pencil, Share2 } from "lucide-react";
 import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Logo } from "@/components/marketing/logo";
@@ -12,6 +12,13 @@ import { defaultQuote } from "@/domain/quote/defaults";
 import { quoteSchema, type Quote, type QuoteDraft } from "@/domain/quote/schema";
 import { buildWhatsappMessage, buildWhatsappUrl } from "@/domain/quote/whatsapp";
 import { clearDraft, loadDraft, saveDraft } from "@/lib/draft-storage";
+import {
+  canShareFilesNatively,
+  PdfRequestError,
+  requestQuotePdf,
+  saveBlob,
+  sharePdfNatively,
+} from "@/lib/pdf-client";
 import { cn } from "@/lib/utils";
 import {
   AdjustmentsSection,
@@ -61,6 +68,13 @@ function EditorForm({ initial, restored }: { initial: QuoteDraft; restored: bool
   const [savedLabel, setSavedLabel] = useState(restored ? "Borrador recuperado" : "");
   const [confirmClear, setConfirmClear] = useState(false);
   const [shareError, setShareError] = useState("");
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [nativeShare, setNativeShare] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- depende de APIs del navegador
+    setNativeShare(canShareFilesNatively());
+  }, []);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const values = useWatch({ control }) as QuoteDraft;
@@ -95,16 +109,45 @@ function EditorForm({ initial, restored }: { initial: QuoteDraft; restored: bool
 
   const currency = values.currency === "USD" ? "USD" : "ARS";
 
-  async function shareWhatsapp() {
+  /** Valida el formulario; si es inválido muestra el aviso y vuelve a la pestaña de edición. */
+  async function validQuote(action: string): Promise<Quote | null> {
     setShareError("");
     const valid = await form.trigger();
     const parsed = quoteSchema.safeParse(form.getValues());
     if (!valid || !parsed.success) {
-      setShareError("Completá los campos obligatorios para compartir el presupuesto.");
+      setShareError(`Completá los campos obligatorios para ${action}.`);
       setTab("edit");
-      return;
+      return null;
     }
-    const q = parsed.data;
+    return parsed.data;
+  }
+
+  async function downloadPdf(share: boolean) {
+    const q = await validQuote(share ? "compartir el PDF" : "descargar el PDF");
+    if (!q) return;
+    setPdfBusy(true);
+    try {
+      const { blob, fileName } = await requestQuotePdf(q);
+      if (share) {
+        const message = buildWhatsappMessage({
+          quote: q,
+          total: totals.total,
+          currency: q.currency,
+        });
+        if (await sharePdfNatively(blob, fileName, message)) return;
+      }
+      saveBlob(blob, fileName);
+    } catch (err) {
+      setShareError(err instanceof PdfRequestError ? err.message : "No pudimos generar el PDF.");
+      setTab("edit");
+    } finally {
+      setPdfBusy(false);
+    }
+  }
+
+  async function shareWhatsapp() {
+    const q = await validQuote("compartir el presupuesto");
+    if (!q) return;
     const message = buildWhatsappMessage({ quote: q, total: totals.total, currency: q.currency });
     window.open(buildWhatsappUrl(message, q.customer.phone), "_blank", "noopener,noreferrer");
   }
@@ -204,8 +247,40 @@ function EditorForm({ initial, restored }: { initial: QuoteDraft; restored: bool
           <QuotePreview quote={values} totals={totals} />
           <div className="mx-auto mt-5 max-w-[640px] space-y-3">
             <div className="flex flex-wrap items-center gap-2">
-              <Button type="button" size="lg" className="h-10 px-4" onClick={shareWhatsapp}>
-                <MessageCircle data-icon="inline-start" /> Compartir por WhatsApp
+              <Button
+                type="button"
+                size="lg"
+                className="h-10 px-4"
+                disabled={pdfBusy}
+                onClick={() => downloadPdf(false)}
+              >
+                {pdfBusy ? (
+                  <Loader2 className="animate-spin" data-icon="inline-start" />
+                ) : (
+                  <Download data-icon="inline-start" />
+                )}
+                Descargar PDF
+              </Button>
+              {nativeShare && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  className="h-10 px-4"
+                  disabled={pdfBusy}
+                  onClick={() => downloadPdf(true)}
+                >
+                  <Share2 data-icon="inline-start" /> Compartir PDF
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                className="h-10 px-4"
+                onClick={shareWhatsapp}
+              >
+                <MessageCircle data-icon="inline-start" /> WhatsApp
               </Button>
               {confirmClear ? (
                 <>
