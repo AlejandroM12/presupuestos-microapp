@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import { getMailer } from "@/integrations/email/mailer";
-import { passwordResetEmail } from "@/integrations/email/templates";
+import { passwordChangedEmail, passwordResetEmail } from "@/integrations/email/templates";
 import { siteConfig } from "@/lib/config/site";
 import { db } from "@/server/db";
 import { hashPassword } from "@/server/auth/password";
@@ -82,4 +82,13 @@ export async function resetPassword(token: string, newPassword: string): Promise
     });
     await tx.passwordResetToken.deleteMany({ where: { userId: row.userId, usedAt: null } });
   });
+
+  const user = await db.user.findUnique({ where: { id: row.userId }, select: { email: true } });
+  if (user) {
+    await getMailer()
+      .send(passwordChangedEmail(user.email))
+      .catch((e) =>
+        console.error("password_changed_email_failed", e instanceof Error ? e.message : "unknown"),
+      );
+  }
 }

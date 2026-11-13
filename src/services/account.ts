@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { passwordSchema } from "@/domain/auth";
+import { getMailer } from "@/integrations/email/mailer";
+import { passwordChangedEmail } from "@/integrations/email/templates";
 import { getGateway } from "@/integrations/mercadopago";
 import { hashPassword, verifyPassword } from "@/server/auth/password";
 import { db } from "@/server/db";
@@ -29,10 +31,22 @@ async function verifyCurrent(userId: string, password: string) {
 export async function changePassword(userId: string, current: string, next: unknown) {
   const parsed = passwordSchema.parse(next);
   await verifyCurrent(userId, current);
-  await db.user.update({
-    where: { id: userId },
-    data: { passwordHash: await hashPassword(parsed), sessionVersion: { increment: 1 } },
-  });
+  await db.user
+    .update({
+      where: { id: userId },
+      data: { passwordHash: await hashPassword(parsed), sessionVersion: { increment: 1 } },
+      select: { email: true },
+    })
+    .then((u) =>
+      getMailer()
+        .send(passwordChangedEmail(u.email))
+        .catch((e) =>
+          console.error(
+            "password_changed_email_failed",
+            e instanceof Error ? e.message : "unknown",
+          ),
+        ),
+    );
 }
 
 /**

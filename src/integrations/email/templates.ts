@@ -129,3 +129,16 @@ export function paymentFailedEmail(to: string, until: Date | null): EmailMessage
     text: toText(content),
   };
 }
+
+export function passwordChangedEmail(to: string): EmailMessage {
+  const content: LayoutInput = {
+    preheader: "Cambiaste la contraseña de tu cuenta.",
+    title: "Cambiaste tu contraseña",
+    paragraphs: [
+      "Te avisamos que la contraseña de tu cuenta de AtajoLab Presupuestos fue modificada y cerramos tus sesiones abiertas.",
+      "Si no fuiste vos, recuperá el acceso cuanto antes desde el enlace de abajo.",
+    ],
+    cta: { label: "Recuperar mi cuenta", url: `${siteConfig.url}/recuperar` },
+  };
+  return { to, subject: "Cambiaste tu contraseña", html: layout(content), text: toText(content) };
+}
