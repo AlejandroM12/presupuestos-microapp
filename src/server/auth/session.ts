@@ -19,3 +19,13 @@ export async function requireUser(next = "/dashboard"): Promise<CurrentUser> {
   if (!user) redirect(`/ingresar?next=${encodeURIComponent(next)}`);
   return user;
 }
+
+/** Para páginas y acciones de escritura de Pro: sin plan vigente se redirige a "Mi plan". */
+export async function requireProUser(
+  load: (userId: string) => Promise<boolean>,
+  next = "/dashboard",
+): Promise<CurrentUser> {
+  const user = await requireUser(next);
+  if (!(await load(user.id))) redirect("/dashboard/plan?need=pro");
+  return user;
+}

@@ -21,8 +21,11 @@ export function toErrorResponse(error: unknown): NextResponse {
     return NextResponse.json({ error: error.message, code: "not_found" }, { status: 404 });
   }
   if (error instanceof ZodError) {
+    // Mensajes de validación propios (en español) por campo, para mostrarlos en el formulario.
+    const fields: Record<string, string> = {};
+    for (const issue of error.issues) fields[issue.path.join(".") || "form"] ??= issue.message;
     return NextResponse.json(
-      { error: "Los datos enviados no son válidos.", code: "invalid_data" },
+      { error: "Los datos enviados no son válidos.", code: "invalid_data", fields },
       { status: 422 },
     );
   }

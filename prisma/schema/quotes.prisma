@@ -3,21 +3,28 @@
 // ---------------------------------------------------------------------------
 
 model BusinessProfile {
-  id               String   @id @default(uuid()) @db.Uuid
-  userId           String   @unique @db.Uuid
+  id               String @id @default(uuid()) @db.Uuid
+  userId           String @unique @db.Uuid
   businessName     String
-  professionalName String   @default("")
+  professionalName String @default("")
   /// Logo como data URL (PNG/JPEG ya redimensionado y validado, máx. ~400 KB).
-  logo             String   @default("")
-  email            String   @default("")
-  phone            String   @default("")
-  whatsapp         String   @default("")
-  address          String   @default("")
-  taxId            String   @default("")
-  website          String   @default("")
-  accentColor      String   @default("")
-  createdAt        DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  logo             String @default("")
+  email            String @default("")
+  phone            String @default("")
+  whatsapp         String @default("")
+  address          String @default("")
+  taxId            String @default("")
+  website          String @default("")
+  accentColor      String @default("")
+
+  /// Preferencias comerciales que precargan cada presupuesto nuevo.
+  defaultCurrency     CurrencyCode @default(ARS)
+  defaultValidityDays Int          @default(15)
+  defaultPaymentTerms String       @default("")
+  defaultTerms        String       @default("")
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

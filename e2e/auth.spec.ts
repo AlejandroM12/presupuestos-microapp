@@ -27,7 +27,7 @@ test.describe("cuentas de usuario", () => {
   test("registro, sesión activa y cierre de sesión", async ({ page }) => {
     await register(page, unique("reg"), "/dashboard");
     await page.waitForURL((url) => url.pathname === "/dashboard");
-    await expect(page.getByRole("heading", { name: /Hola, Laura E2E/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Inicio" })).toBeVisible();
 
     await signOut(page);
     await page.goto("/dashboard");

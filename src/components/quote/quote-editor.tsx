@@ -3,13 +3,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Download, Eraser, Eye, Loader2, MessageCircle, Pencil, Share2 } from "lucide-react";
+import { Cloud, Download, Eraser, Eye, Loader2, MessageCircle, Pencil, Share2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Select } from "@/components/ui/fields";
 import { Logo } from "@/components/marketing/logo";
 import { calculateTotals } from "@/domain/quote/calculations";
 import { defaultQuote } from "@/domain/quote/defaults";
+import { applyProfile, type ProfileDefaults } from "@/domain/quote/profile";
+import { TEMPLATES } from "@/domain/templates";
 import { quoteSchema, type Quote, type QuoteDraft } from "@/domain/quote/schema";
 import { buildWhatsappMessage, buildWhatsappUrl } from "@/domain/quote/whatsapp";
 import { clearDraft, loadDraft, saveDraft } from "@/lib/draft-storage";
@@ -35,18 +38,53 @@ import { QuotePreview } from "./quote-preview";
 
 type Loaded = { quote: QuoteDraft; restored: boolean; savedAt: string };
 
-export function QuoteEditor() {
+export interface SavedCustomer {
+  id: string;
+  name: string;
+  company: string;
+  email: string;
+  phone: string;
+  address: string;
+  taxId: string;
+}
+
+export interface EditorCloud {
+  /** Presupuesto guardado que se está editando (null si es uno nuevo). */
+  quoteId: string | null;
+  draft: QuoteDraft | null;
+  customerId: string | null;
+  profile: ProfileDefaults | null;
+  customers: SavedCustomer[];
+  /** Diseño elegido desde la galería (?template=). */
+  templateId: string | null;
+  /** Se pidió un presupuesto por id pero no existe o no es del usuario. */
+  notFound: boolean;
+}
+
+export function QuoteEditor({ cloud }: { cloud?: EditorCloud }) {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
+  const initialized = useRef(false);
 
   useEffect(() => {
-    const stored = loadDraft();
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- el borrador solo existe en el cliente
-    setLoaded(
-      stored
-        ? { quote: stored.quote, restored: true, savedAt: stored.savedAt }
-        : { quote: defaultQuote(), restored: false, savedAt: "" },
-    );
-  }, []);
+    // Se inicializa una sola vez: un refresco del servidor no debe pisar lo que se está editando.
+    if (initialized.current) return;
+    initialized.current = true;
+    let next: Loaded;
+    if (cloud?.draft) {
+      // Se edita un presupuesto guardado: no se mezcla con el borrador local.
+      next = { quote: cloud.draft, restored: false, savedAt: "" };
+    } else {
+      const stored = loadDraft();
+      let quote = stored ? stored.quote : defaultQuote();
+      // Sesión iniciada: se precargan los datos del negocio en un presupuesto sin emisor.
+      if (cloud?.profile && !quote.issuer.businessName) quote = applyProfile(quote, cloud.profile);
+      next = { quote, restored: !!stored, savedAt: stored?.savedAt ?? "" };
+    }
+    if (cloud?.templateId && TEMPLATES.some((t) => t.id === cloud.templateId)) {
+      next = { ...next, quote: { ...next.quote, templateId: cloud.templateId } };
+    }
+    setLoaded(next);
+  }, [cloud]);
 
   if (!loaded) {
     return (
@@ -58,10 +96,18 @@ export function QuoteEditor() {
       </div>
     );
   }
-  return <EditorForm initial={loaded.quote} restored={loaded.restored} />;
+  return <EditorForm initial={loaded.quote} restored={loaded.restored} cloud={cloud} />;
 }
 
-function EditorForm({ initial, restored }: { initial: QuoteDraft; restored: boolean }) {
+function EditorForm({
+  initial,
+  restored,
+  cloud,
+}: {
+  initial: QuoteDraft;
+  restored: boolean;
+  cloud?: EditorCloud;
+}) {
   const form = useForm<QuoteDraft, unknown, Quote>({
     resolver: zodResolver(quoteSchema),
     defaultValues: initial,
@@ -76,6 +122,11 @@ function EditorForm({ initial, restored }: { initial: QuoteDraft; restored: bool
   const [nativeShare, setNativeShare] = useState(false);
   const { entitlements, refresh: refreshEntitlements } = useEntitlements();
   const router = useRouter();
+  const quoteId = cloud?.quoteId ?? null;
+  const [customerId, setCustomerId] = useState<string | null>(cloud?.customerId ?? null);
+  const [cloudBusy, setCloudBusy] = useState(false);
+  const [cloudMessage, setCloudMessage] = useState("");
+  const readOnly = !!quoteId && !entitlements.cloudFeatures;
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- depende de APIs del navegador
@@ -101,6 +152,7 @@ function EditorForm({ initial, restored }: { initial: QuoteDraft; restored: bool
       firstRender.current = false;
       return;
     }
+    if (quoteId) return; // los presupuestos de la nube no pisan el borrador local
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       const ok = saveDraft(values);
@@ -111,7 +163,7 @@ function EditorForm({ initial, restored }: { initial: QuoteDraft; restored: bool
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [values]);
+  }, [values, quoteId]);
 
   const designLocked = !entitlements.templates.includes(values.templateId);
   const currency = values.currency === "USD" ? "USD" : "ARS";
@@ -159,6 +211,48 @@ function EditorForm({ initial, restored }: { initial: QuoteDraft; restored: bool
       setTab("edit");
     } finally {
       setPdfBusy(false);
+    }
+  }
+
+  async function saveToCloud() {
+    const q = await validQuote("guardar el presupuesto");
+    if (!q) return;
+    setCloudBusy(true);
+    setCloudMessage("");
+    try {
+      const response = await fetch(quoteId ? `/api/quotes/${quoteId}` : "/api/quotes", {
+        method: quoteId ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quote: q, customerId }),
+      });
+      const data = (await response.json().catch(() => null)) as {
+        id?: string;
+        error?: string;
+      } | null;
+      if (!response.ok) {
+        setShareError(data?.error ?? "No pudimos guardar el presupuesto.");
+        setTab("edit");
+      } else if (!quoteId && data?.id) {
+        clearDraft(); // ya vive en la nube: se descarta el borrador local
+        router.replace(`/crear?id=${data.id}`);
+      } else {
+        setCloudMessage("Guardado en tu cuenta.");
+      }
+    } catch {
+      setShareError("No hay conexión. Revisá tu internet e intentá otra vez.");
+    }
+    setCloudBusy(false);
+  }
+
+  function pickCustomer(id: string) {
+    const c = cloud?.customers.find((x) => x.id === id);
+    if (!c) {
+      setCustomerId(null);
+      return;
+    }
+    setCustomerId(c.id);
+    for (const key of ["name", "company", "email", "phone", "address", "taxId"] as const) {
+      setValue(`customer.${key}`, c[key], { shouldDirty: true, shouldValidate: true });
     }
   }
 
@@ -261,6 +355,26 @@ function EditorForm({ initial, restored }: { initial: QuoteDraft; restored: bool
               {shareError}
             </p>
           )}
+          {cloud?.notFound && (
+            <p
+              role="alert"
+              className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+            >
+              No encontramos ese presupuesto en tu cuenta. Podés armar uno nuevo acá.
+            </p>
+          )}
+          {readOnly && (
+            <p
+              role="status"
+              className="rounded-lg border border-border bg-white px-4 py-3 text-sm text-ink"
+            >
+              Modo lectura: tu plan Pro no está vigente, así que no podés guardar cambios en este
+              presupuesto. Igual podés descargarlo.{" "}
+              <Link href="/dashboard/plan" className="font-medium underline underline-offset-4">
+                Ver plan Pro
+              </Link>
+            </p>
+          )}
           {restored && (
             <p className="rounded-lg border border-border bg-white px-4 py-3 text-sm text-muted-foreground">
               {entitlements.authenticated
@@ -274,6 +388,27 @@ function EditorForm({ initial, restored }: { initial: QuoteDraft; restored: bool
             watch={watch}
             setValue={setValue}
           />
+          {entitlements.cloudFeatures && (cloud?.customers.length ?? 0) > 0 && (
+            <div className="rounded-xl border border-border bg-white p-5 sm:p-6">
+              <label htmlFor="saved-customer" className="block text-xs font-medium text-ink">
+                Usar un cliente guardado
+              </label>
+              <Select
+                id="saved-customer"
+                className="mt-1.5"
+                value={customerId ?? ""}
+                onChange={(e) => pickCustomer(e.target.value)}
+              >
+                <option value="">Escribir los datos a mano</option>
+                {cloud?.customers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                    {c.company ? ` · ${c.company}` : ""}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
           <CustomerSection register={register} errors={formState.errors} />
           <DetailsSection register={register} errors={formState.errors} />
           <ItemsSection
@@ -336,6 +471,23 @@ function EditorForm({ initial, restored }: { initial: QuoteDraft; restored: bool
                   <Share2 data-icon="inline-start" /> Compartir PDF
                 </Button>
               )}
+              {entitlements.cloudFeatures ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  className="h-10 px-4"
+                  disabled={cloudBusy || readOnly}
+                  onClick={saveToCloud}
+                >
+                  {cloudBusy ? (
+                    <Loader2 className="animate-spin" data-icon="inline-start" />
+                  ) : (
+                    <Cloud data-icon="inline-start" />
+                  )}
+                  {quoteId ? "Guardar cambios" : "Guardar en la nube"}
+                </Button>
+              ) : null}
               <Button
                 type="button"
                 variant="outline"
@@ -345,7 +497,7 @@ function EditorForm({ initial, restored }: { initial: QuoteDraft; restored: bool
               >
                 <MessageCircle data-icon="inline-start" /> WhatsApp
               </Button>
-              {confirmClear ? (
+              {quoteId ? null : confirmClear ? (
                 <>
                   <Button
                     type="button"
@@ -398,6 +550,23 @@ function EditorForm({ initial, restored }: { initial: QuoteDraft; restored: bool
                 </>
               )}
             </p>
+            {cloudMessage && (
+              <p role="status" className="text-sm text-ink">
+                {cloudMessage}
+              </p>
+            )}
+            {entitlements.authenticated && !entitlements.cloudFeatures && (
+              <p className="text-xs text-muted-foreground">
+                Con el plan Pro guardás tus presupuestos en la nube, gestionás clientes y seguís su
+                estado.{" "}
+                <Link
+                  href="/dashboard/plan"
+                  className="font-medium text-ink underline underline-offset-4"
+                >
+                  Ver plan Pro
+                </Link>
+              </p>
+            )}
             {designLocked && (
               <p className="text-xs text-ink">
                 El diseño elegido es premium: para descargarlo necesitás el Pack Premium. Podés ver

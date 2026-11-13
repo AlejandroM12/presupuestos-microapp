@@ -1,111 +1,42 @@
-import { NextResponse } from "next/server";
-import {
-  computeEntitlements,
-  DENIAL_MESSAGES,
-  DENIAL_STATUS,
-  decidePdfRender,
-  FAIR_USE_MESSAGE,
-} from "@/domain/entitlements";
 import { quoteSchema } from "@/domain/quote/schema";
-import { auth } from "@/auth";
-import { getAccessContext } from "@/server/access";
 import { clientIp, RateLimiter } from "@/server/rate-limit";
-import { DownloadLimitError, releaseDownload, reserveDownload } from "@/services/access";
-import { pdfFileName } from "@/services/pdf/model";
-import { renderQuotePdf } from "@/services/pdf/render";
+import { issueQuotePdf, pdfError } from "@/server/pdf-response";
 
 export const runtime = "nodejs";
 
 const MAX_BODY_BYTES = 1_000_000;
 const limiter = new RateLimiter(Number(process.env.RATE_LIMIT_PDF_PER_MINUTE) || 20, 60_000);
 
-function error(status: number, message: string, headers?: HeadersInit, code?: string) {
-  return NextResponse.json({ error: message, code }, { status, headers });
-}
-
 export async function POST(request: Request) {
   const rate = limiter.check(clientIp(request.headers));
   if (!rate.allowed) {
-    return error(429, "Demasiados intentos. Probá de nuevo en unos segundos.", {
+    return pdfError(429, "Demasiados intentos. Probá de nuevo en unos segundos.", {
       "Retry-After": String(rate.retryAfterSeconds),
     });
   }
 
   const declared = Number(request.headers.get("content-length") ?? 0);
-  if (declared > MAX_BODY_BYTES) return error(413, "El presupuesto es demasiado grande.");
+  if (declared > MAX_BODY_BYTES) return pdfError(413, "El presupuesto es demasiado grande.");
 
   let raw: string;
   try {
     raw = await request.text();
   } catch {
-    return error(400, "Solicitud inválida.");
+    return pdfError(400, "Solicitud inválida.");
   }
-  if (raw.length > MAX_BODY_BYTES) return error(413, "El presupuesto es demasiado grande.");
+  if (raw.length > MAX_BODY_BYTES) return pdfError(413, "El presupuesto es demasiado grande.");
 
   let body: unknown;
   try {
     body = JSON.parse(raw);
   } catch {
-    return error(400, "El cuerpo debe ser JSON válido.");
+    return pdfError(400, "El cuerpo debe ser JSON válido.");
   }
 
   const parsed = quoteSchema.safeParse(body);
-  if (!parsed.success) return error(422, "El presupuesto tiene datos inválidos o incompletos.");
+  if (!parsed.success) return pdfError(422, "El presupuesto tiene datos inválidos o incompletos.");
   const quote = parsed.data;
 
   const preview = new URL(request.url).searchParams.get("preview") === "1";
-  const access = await getAccessContext();
-  const decision = decidePdfRender(access, { templateId: quote.templateId, preview });
-  if (!decision.allowed) {
-    const message =
-      decision.reason === "download_limit_reached" && access.proActive
-        ? FAIR_USE_MESSAGE
-        : DENIAL_MESSAGES[decision.reason];
-    return error(DENIAL_STATUS[decision.reason], message, undefined, decision.reason);
-  }
-
-  // Descarga final: se reserva de forma atómica antes de generar y se libera si falla.
-  let reservation: string | null = null;
-  if (!decision.preview) {
-    const userId = (await auth())?.user?.id;
-    if (!userId) return error(401, DENIAL_MESSAGES.login_required, undefined, "login_required");
-    try {
-      reservation = await reserveDownload(
-        userId,
-        quote.templateId,
-        computeEntitlements(access).downloadCap,
-      );
-    } catch (err) {
-      if (err instanceof DownloadLimitError) {
-        const message = access.proActive
-          ? FAIR_USE_MESSAGE
-          : DENIAL_MESSAGES.download_limit_reached;
-        return error(429, message, undefined, "download_limit_reached");
-      }
-      console.error("download_reserve_failed", err instanceof Error ? err.message : "unknown");
-      return error(500, "No pudimos preparar la descarga. Intentá nuevamente.");
-    }
-  }
-
-  try {
-    const pdf = await renderQuotePdf(quote, {
-      templateId: quote.templateId,
-      showBrand: decision.showBrand,
-      allowCustomColor: decision.allowCustomColor,
-      preview: decision.preview,
-    });
-    return new Response(new Uint8Array(pdf), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `${decision.preview ? "inline" : "attachment"}; filename="${pdfFileName(quote)}"`,
-        "Cache-Control": "no-store",
-        "X-Content-Type-Options": "nosniff",
-      },
-    });
-  } catch (err) {
-    if (reservation) await releaseDownload(reservation).catch(() => {});
-    console.error("pdf_render_failed", err instanceof Error ? err.message : "unknown");
-    return error(500, "No pudimos generar el PDF. Intentá nuevamente.");
-  }
+  return issueQuotePdf(quote, preview);
 }

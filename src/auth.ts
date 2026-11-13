@@ -13,7 +13,7 @@ export class RateLimitedError extends CredentialsSignin {
 }
 
 const perAccount = new RateLimiter(8, 15 * 60_000);
-const perIp = new RateLimiter(40, 15 * 60_000);
+const perIp = new RateLimiter(Number(process.env.RATE_LIMIT_LOGIN_PER_IP) || 40, 15 * 60_000);
 
 const THIRTY_DAYS = 30 * 24 * 60 * 60;
 
