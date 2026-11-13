@@ -6,6 +6,8 @@
 
 @theme inline {
   --color-background: var(--background);
+  --color-brand: var(--brand);
+  --color-ink: var(--ink);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);
   --font-display: var(--font-bricolage);
@@ -50,13 +52,15 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --background: oklch(0.985 0.006 85);
+  --foreground: oklch(0.22 0.04 265);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --primary: oklch(0.27 0.05 265);
+  --brand: oklch(0.66 0.19 45);
+  --ink: oklch(0.27 0.05 265);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
