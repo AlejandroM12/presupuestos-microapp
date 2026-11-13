@@ -38,7 +38,21 @@ describe("computeEntitlements", () => {
     const e = computeEntitlements(user({ proActive: true, downloadsThisMonth: 40 }));
     expect(e.templates).toHaveLength(6);
     expect(e.downloadLimit).toBeNull();
+    expect(e.downloadCap).toBe(LIMITS.proFairUseMonthlyDownloads);
     expect(e.cloudFeatures).toBe(true);
+  });
+
+  it("Pro tiene un tope técnico de uso razonable", () => {
+    const e = computeEntitlements(
+      user({ proActive: true, downloadsThisMonth: LIMITS.proFairUseMonthlyDownloads }),
+    );
+    expect(e.downloadsRemaining).toBe(0);
+    expect(
+      decidePdfRender(
+        user({ proActive: true, downloadsThisMonth: LIMITS.proFairUseMonthlyDownloads }),
+        { templateId: "minimalista", preview: false },
+      ),
+    ).toEqual({ allowed: false, reason: "download_limit_reached" });
   });
 
   it("nunca devuelve descargas restantes negativas", () => {
@@ -47,7 +61,7 @@ describe("computeEntitlements", () => {
 });
 
 describe("decidePdfRender", () => {
-  it("anónimo no puede descargar el PDF final (sin la excepción transitoria)", () => {
+  it("anónimo no puede descargar el PDF final", () => {
     expect(decidePdfRender(ANONYMOUS, { templateId: "minimalista", preview: false })).toEqual({
       allowed: false,
       reason: "login_required",

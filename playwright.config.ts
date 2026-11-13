@@ -34,6 +34,7 @@ export default defineConfig({
       AUTH_SECRET: process.env.AUTH_SECRET ?? "e2e-secret-not-for-production-use-0123456789",
       AUTH_TRUST_HOST: "true",
       RATE_LIMIT_REGISTER_PER_HOUR: "1000",
+      RATE_LIMIT_PDF_PER_MINUTE: "1000",
     },
     timeout: 120_000,
   },

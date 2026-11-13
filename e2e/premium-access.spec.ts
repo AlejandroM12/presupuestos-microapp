@@ -31,10 +31,29 @@ const quote = (templateId: string) => ({
 });
 
 test.describe("permisos de diseños premium", () => {
-  test("el servidor rechaza el PDF final premium sin licencia", async ({ request }) => {
-    const res = await request.post("/api/quotes/pdf", { data: quote("ejecutivo") });
+  test("el PDF final exige cuenta, también para el diseño gratuito", async ({ request }) => {
+    const res = await request.post("/api/quotes/pdf", { data: quote("minimalista") });
+    expect(res.status()).toBe(401);
+    expect((await res.json()).code).toBe("login_required");
+  });
+
+  test("el servidor rechaza el PDF final premium sin licencia", async ({ browser }) => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.goto("/registro?next=/dashboard");
+    await page
+      .getByLabel("Email")
+      .fill(`prem-${Date.now()}-${Math.floor(Math.random() * 1e6)}@e2e.example`);
+    await page.getByLabel("Contraseña").fill("clave-e2e-segura-1");
+    await page.getByRole("button", { name: "Crear cuenta" }).click();
+    await page.waitForURL((url) => url.pathname === "/dashboard");
+    const res = await page.request.post("/api/quotes/pdf", { data: quote("ejecutivo") });
     expect(res.status()).toBe(403);
     expect((await res.json()).code).toBe("template_locked");
+    // la vista previa sí está disponible y no consume descargas
+    expect(
+      (await page.request.post("/api/quotes/pdf?preview=1", { data: quote("ejecutivo") })).status(),
+    ).toBe(200);
   });
 
   test("el servidor entrega la vista previa premium con marca de agua", async ({ request }) => {
@@ -64,6 +83,6 @@ test.describe("permisos de diseños premium", () => {
     await expect(page.getByText("es un diseño premium")).toBeVisible();
     await expect(page.getByLabel("Color de acento")).toBeDisabled();
     if (isMobile) await page.getByRole("tab", { name: "Vista previa" }).click();
-    await expect(page.getByRole("button", { name: "Descargar PDF" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Crear cuenta para descargar" })).toBeDisabled();
   });
 });

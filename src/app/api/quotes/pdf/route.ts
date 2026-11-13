@@ -1,15 +1,23 @@
 import { NextResponse } from "next/server";
-import { DENIAL_MESSAGES, DENIAL_STATUS, decidePdfRender } from "@/domain/entitlements";
+import {
+  computeEntitlements,
+  DENIAL_MESSAGES,
+  DENIAL_STATUS,
+  decidePdfRender,
+  FAIR_USE_MESSAGE,
+} from "@/domain/entitlements";
 import { quoteSchema } from "@/domain/quote/schema";
+import { auth } from "@/auth";
 import { getAccessContext } from "@/server/access";
 import { clientIp, RateLimiter } from "@/server/rate-limit";
+import { DownloadLimitError, releaseDownload, reserveDownload } from "@/services/access";
 import { pdfFileName } from "@/services/pdf/model";
 import { renderQuotePdf } from "@/services/pdf/render";
 
 export const runtime = "nodejs";
 
 const MAX_BODY_BYTES = 1_000_000;
-const limiter = new RateLimiter(20, 60_000);
+const limiter = new RateLimiter(Number(process.env.RATE_LIMIT_PDF_PER_MINUTE) || 20, 60_000);
 
 function error(status: number, message: string, headers?: HeadersInit, code?: string) {
   return NextResponse.json({ error: message, code }, { status, headers });
@@ -47,19 +55,36 @@ export async function POST(request: Request) {
 
   const preview = new URL(request.url).searchParams.get("preview") === "1";
   const access = await getAccessContext();
-  const decision = decidePdfRender(access, {
-    templateId: quote.templateId,
-    preview,
-    // Transitorio hasta activar cuentas y límites (ver Feature de autenticación).
-    allowAnonymousFreeDownload: true,
-  });
+  const decision = decidePdfRender(access, { templateId: quote.templateId, preview });
   if (!decision.allowed) {
-    return error(
-      DENIAL_STATUS[decision.reason],
-      DENIAL_MESSAGES[decision.reason],
-      undefined,
-      decision.reason,
-    );
+    const message =
+      decision.reason === "download_limit_reached" && access.proActive
+        ? FAIR_USE_MESSAGE
+        : DENIAL_MESSAGES[decision.reason];
+    return error(DENIAL_STATUS[decision.reason], message, undefined, decision.reason);
+  }
+
+  // Descarga final: se reserva de forma atómica antes de generar y se libera si falla.
+  let reservation: string | null = null;
+  if (!decision.preview) {
+    const userId = (await auth())?.user?.id;
+    if (!userId) return error(401, DENIAL_MESSAGES.login_required, undefined, "login_required");
+    try {
+      reservation = await reserveDownload(
+        userId,
+        quote.templateId,
+        computeEntitlements(access).downloadCap,
+      );
+    } catch (err) {
+      if (err instanceof DownloadLimitError) {
+        const message = access.proActive
+          ? FAIR_USE_MESSAGE
+          : DENIAL_MESSAGES.download_limit_reached;
+        return error(429, message, undefined, "download_limit_reached");
+      }
+      console.error("download_reserve_failed", err instanceof Error ? err.message : "unknown");
+      return error(500, "No pudimos preparar la descarga. Intentá nuevamente.");
+    }
   }
 
   try {
@@ -79,6 +104,7 @@ export async function POST(request: Request) {
       },
     });
   } catch (err) {
+    if (reservation) await releaseDownload(reservation).catch(() => {});
     console.error("pdf_render_failed", err instanceof Error ? err.message : "unknown");
     return error(500, "No pudimos generar el PDF. Intentá nuevamente.");
   }

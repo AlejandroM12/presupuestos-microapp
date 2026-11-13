@@ -5,6 +5,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Download, Eraser, Eye, Loader2, MessageCircle, Pencil, Share2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Logo } from "@/components/marketing/logo";
 import { calculateTotals } from "@/domain/quote/calculations";
@@ -19,6 +20,7 @@ import {
   saveBlob,
   sharePdfNatively,
 } from "@/lib/pdf-client";
+import { LIMITS } from "@/lib/config/plans";
 import { useEntitlements } from "@/lib/use-entitlements";
 import { cn } from "@/lib/utils";
 import {
@@ -72,7 +74,8 @@ function EditorForm({ initial, restored }: { initial: QuoteDraft; restored: bool
   const [shareError, setShareError] = useState("");
   const [pdfBusy, setPdfBusy] = useState(false);
   const [nativeShare, setNativeShare] = useState(false);
-  const entitlements = useEntitlements();
+  const { entitlements, refresh: refreshEntitlements } = useEntitlements();
+  const router = useRouter();
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- depende de APIs del navegador
@@ -129,6 +132,12 @@ function EditorForm({ initial, restored }: { initial: QuoteDraft; restored: bool
   async function downloadPdf(share: boolean) {
     const q = await validQuote(share ? "compartir el PDF" : "descargar el PDF");
     if (!q) return;
+    if (!entitlements.authenticated) {
+      // El borrador ya está guardado en el navegador y se recupera al volver.
+      saveDraft(form.getValues() as QuoteDraft);
+      router.push("/registro?next=%2Fcrear");
+      return;
+    }
     setPdfBusy(true);
     try {
       const { blob, fileName } = await requestQuotePdf(q);
@@ -138,9 +147,13 @@ function EditorForm({ initial, restored }: { initial: QuoteDraft; restored: bool
           total: totals.total,
           currency: q.currency,
         });
-        if (await sharePdfNatively(blob, fileName, message)) return;
+        if (await sharePdfNatively(blob, fileName, message)) {
+          void refreshEntitlements();
+          return;
+        }
       }
       saveBlob(blob, fileName);
+      void refreshEntitlements();
     } catch (err) {
       setShareError(err instanceof PdfRequestError ? err.message : "No pudimos generar el PDF.");
       setTab("edit");
@@ -250,7 +263,9 @@ function EditorForm({ initial, restored }: { initial: QuoteDraft; restored: bool
           )}
           {restored && (
             <p className="rounded-lg border border-border bg-white px-4 py-3 text-sm text-muted-foreground">
-              Recuperamos el borrador que tenías guardado en este dispositivo.
+              {entitlements.authenticated
+                ? "Retomamos el borrador que dejaste en este dispositivo. Podés seguir editándolo o limpiarlo para empezar de cero."
+                : "Recuperamos el borrador que tenías guardado en este dispositivo."}
             </p>
           )}
           <IssuerSection
@@ -295,7 +310,11 @@ function EditorForm({ initial, restored }: { initial: QuoteDraft; restored: bool
                 type="button"
                 size="lg"
                 className="h-10 px-4"
-                disabled={pdfBusy || designLocked}
+                disabled={
+                  pdfBusy ||
+                  designLocked ||
+                  (entitlements.authenticated && entitlements.downloadsRemaining === 0)
+                }
                 onClick={() => downloadPdf(false)}
               >
                 {pdfBusy ? (
@@ -303,7 +322,7 @@ function EditorForm({ initial, restored }: { initial: QuoteDraft; restored: bool
                 ) : (
                   <Download data-icon="inline-start" />
                 )}
-                Descargar PDF
+                {entitlements.authenticated ? "Descargar PDF" : "Crear cuenta para descargar"}
               </Button>
               {nativeShare && (
                 <Button
@@ -359,6 +378,26 @@ function EditorForm({ initial, restored }: { initial: QuoteDraft; restored: bool
                 </Button>
               )}
             </div>
+            <p className="text-sm text-muted-foreground" role="status" data-testid="download-usage">
+              {!entitlements.authenticated
+                ? `Podés armar y previsualizar sin cuenta. Para descargar el PDF necesitás una cuenta gratuita (${LIMITS.freeMonthlyDownloads} descargas por mes).`
+                : entitlements.downloadLimit === null
+                  ? "Plan Pro: descargas sin límite (uso razonable)."
+                  : entitlements.downloadsRemaining > 0
+                    ? `Te quedan ${entitlements.downloadsRemaining} de ${entitlements.downloadLimit} descargas este mes.`
+                    : `Usaste tus ${entitlements.downloadLimit} descargas de este mes.`}
+              {entitlements.authenticated && entitlements.downloadsRemaining === 0 && (
+                <>
+                  {" "}
+                  <Link
+                    href="/#precios"
+                    className="font-medium text-ink underline underline-offset-4"
+                  >
+                    Ver planes
+                  </Link>
+                </>
+              )}
+            </p>
             {designLocked && (
               <p className="text-xs text-ink">
                 El diseño elegido es premium: para descargarlo necesitás el Pack Premium. Podés ver

@@ -33,3 +33,37 @@ export async function loadAccessContext(
 export async function recordDownload(userId: string, templateId: string, now: Date = new Date()) {
   await db.downloadUsage.create({ data: { userId, templateId, periodKey: periodKey(now) } });
 }
+
+export class DownloadLimitError extends Error {
+  constructor() {
+    super("Límite mensual de descargas alcanzado");
+  }
+}
+
+/**
+ * Reserva una descarga de forma atómica: bajo un lock por usuario cuenta las del mes y
+ * registra la nueva solo si no se superó el tope. Evita que solicitudes simultáneas
+ * excedan el límite. Si luego falla la generación del PDF, se libera con releaseDownload.
+ */
+export async function reserveDownload(
+  userId: string,
+  templateId: string,
+  cap: number,
+  now: Date = new Date(),
+): Promise<string> {
+  const key = periodKey(now);
+  return db.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${userId}, 0))`;
+    const used = await tx.downloadUsage.count({ where: { userId, periodKey: key } });
+    if (used >= cap) throw new DownloadLimitError();
+    const row = await tx.downloadUsage.create({
+      data: { userId, templateId, periodKey: key },
+      select: { id: true },
+    });
+    return row.id;
+  });
+}
+
+export async function releaseDownload(id: string): Promise<void> {
+  await db.downloadUsage.deleteMany({ where: { id } });
+}

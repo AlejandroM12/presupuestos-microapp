@@ -26,8 +26,11 @@ export interface Entitlements {
   /** Plantillas con las que se puede generar el PDF final. */
   templates: string[];
   /** Descargas finales restantes este mes; null = sin límite (Pro). */
-  downloadsRemaining: number | null;
+  downloadsRemaining: number;
+  /** Límite visible para la persona; null en Pro (uso razonable, sin tope anunciado). */
   downloadLimit: number | null;
+  /** Tope técnico mensual que aplica el servidor (en Pro, la política de uso razonable). */
+  downloadCap: number;
   allowCustomColor: boolean;
   /** Historial en la nube, clientes y dashboard. */
   cloudFeatures: boolean;
@@ -47,6 +50,7 @@ export function computeEntitlements(ctx: AccessContext): Entitlements {
     templates: premiumUnlocked ? [FREE_TEMPLATE_ID, ...premiumTemplates] : [FREE_TEMPLATE_ID],
     downloadsRemaining: Math.max(0, cap - ctx.downloadsThisMonth),
     downloadLimit: unlimited ? null : limit,
+    downloadCap: cap,
     allowCustomColor: premiumUnlocked,
     cloudFeatures: ctx.proActive,
   };
@@ -63,11 +67,6 @@ export interface DecideOptions {
   templateId: string;
   /** true = vista previa con marca de agua (no cuenta como descarga). */
   preview: boolean;
-  /**
-   * Transitorio: mientras no exista la cuenta de usuario, el diseño gratuito puede
-   * descargarse sin sesión. Se desactiva al activar autenticación y límites.
-   */
-  allowAnonymousFreeDownload?: boolean;
 }
 
 /**
@@ -86,15 +85,18 @@ export function decidePdfRender(ctx: AccessContext, opts: DecideOptions): Render
     return { allowed: true, showBrand, allowCustomColor: ent.allowCustomColor, preview: true };
   }
 
-  if (!ctx.authenticated && !opts.allowAnonymousFreeDownload) {
+  if (!ctx.authenticated) {
     return { allowed: false, reason: "login_required" };
   }
   if (!ent.templates.includes(template.id)) return { allowed: false, reason: "template_locked" };
-  if (ctx.authenticated && ent.downloadsRemaining !== null && ent.downloadsRemaining <= 0) {
+  if (ctx.authenticated && ent.downloadsRemaining <= 0) {
     return { allowed: false, reason: "download_limit_reached" };
   }
   return { allowed: true, showBrand, allowCustomColor: ent.allowCustomColor, preview: false };
 }
+
+export const FAIR_USE_MESSAGE =
+  "Alcanzaste el límite de uso razonable de este mes. Escribinos si necesitás más volumen.";
 
 export const DENIAL_MESSAGES: Record<DenialReason, string> = {
   unknown_template: "El diseño elegido no existe.",

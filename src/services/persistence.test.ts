@@ -3,7 +3,13 @@ import { ANONYMOUS, computeEntitlements } from "@/domain/entitlements";
 import { defaultQuote } from "@/domain/quote/defaults";
 import type { QuoteDraft } from "@/domain/quote/schema";
 import { db } from "@/server/db";
-import { loadAccessContext, recordDownload } from "./access";
+import {
+  DownloadLimitError,
+  loadAccessContext,
+  recordDownload,
+  releaseDownload,
+  reserveDownload,
+} from "./access";
 import { getBusinessProfile, saveBusinessProfile } from "./business-profile";
 import {
   createCustomer,
@@ -289,5 +295,43 @@ describe.skipIf(!enabled)("contexto de acceso (PostgreSQL)", () => {
       data: { currentPeriodEnd: new Date("2026-06-01T00:00:00Z") },
     });
     expect((await loadAccessContext(userId, now)).proActive).toBe(false);
+  });
+});
+
+describe.skipIf(!enabled)("límite de descargas (PostgreSQL)", () => {
+  let userId: string;
+  const now = new Date("2026-06-15T12:00:00Z");
+
+  beforeAll(async () => {
+    userId = (await db.user.create({ data: { email: `dl${DOMAIN}`, passwordHash: "x" } })).id;
+  });
+  afterAll(async () => {
+    await db.user.deleteMany({ where: { email: { endsWith: DOMAIN } } });
+  });
+
+  it("con solicitudes simultáneas nunca supera el tope", async () => {
+    const results = await Promise.allSettled(
+      Array.from({ length: 12 }, () => reserveDownload(userId, "minimalista", 3, now)),
+    );
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(3);
+    for (const r of results.filter((r) => r.status === "rejected")) {
+      expect((r as PromiseRejectedResult).reason).toBeInstanceOf(DownloadLimitError);
+    }
+    expect((await loadAccessContext(userId, now)).downloadsThisMonth).toBe(3);
+  });
+
+  it("liberar una reserva devuelve el cupo", async () => {
+    await expect(reserveDownload(userId, "minimalista", 3, now)).rejects.toBeInstanceOf(
+      DownloadLimitError,
+    );
+    const one = await db.downloadUsage.findFirstOrThrow({ where: { userId } });
+    await releaseDownload(one.id);
+    await expect(reserveDownload(userId, "minimalista", 3, now)).resolves.toBeTypeOf("string");
+  });
+
+  it("el contador se reinicia al comenzar un nuevo mes", async () => {
+    const july = new Date("2026-07-01T00:00:01Z");
+    expect((await loadAccessContext(userId, july)).downloadsThisMonth).toBe(0);
+    await expect(reserveDownload(userId, "minimalista", 3, july)).resolves.toBeTypeOf("string");
   });
 });

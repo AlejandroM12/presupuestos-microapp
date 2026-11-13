@@ -62,22 +62,4 @@ test.describe("editor de presupuestos", () => {
     if (isMobile) await page.getByRole("tab", { name: "Editar" }).click();
     await expect(page.getByLabel("Nombre comercial")).toHaveValue("");
   });
-
-  test("descarga un PDF válido del presupuesto", async ({ page, isMobile }) => {
-    await page.goto("/crear");
-    await page.getByLabel("Nombre comercial").fill("Electro Sur");
-    await page.getByLabel("Nombre", { exact: true }).fill("Laura Benítez");
-    await page.getByLabel("Título").fill("Instalación eléctrica");
-    await page.getByLabel("Descripción", { exact: true }).fill("Tablero principal");
-    await page.getByLabel("Precio unitario").fill("1000");
-    if (isMobile) await page.getByRole("tab", { name: "Vista previa" }).click();
-    const downloadPromise = page.waitForEvent("download");
-    await page.getByRole("button", { name: "Descargar PDF" }).click();
-    const download = await downloadPromise;
-    expect(download.suggestedFilename()).toBe("Presupuesto-0001-Laura-Benitez.pdf");
-    const stream = await download.createReadStream();
-    const chunks: Buffer[] = [];
-    for await (const chunk of stream) chunks.push(Buffer.from(chunk));
-    expect(Buffer.concat(chunks).subarray(0, 5).toString()).toBe("%PDF-");
-  });
 });
