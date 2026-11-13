@@ -1,22 +1,59 @@
 # AtajoLab Presupuestos
 
-Microapp de AtajoLab para crear presupuestos profesionales, descargarlos en PDF y compartirlos con clientes.
+Microapp de [AtajoLab](https://atajolab.dev) para crear presupuestos profesionales, descargarlos en PDF y compartirlos con clientes. Dominio objetivo: `https://presupuestos.atajolab.dev`.
 
-## Desarrollo
+## Qué incluye
+
+- Landing comercial pública, SEO, Open Graph, sitemap y robots.
+- Editor `/crear` sin registro: emisor, cliente, conceptos (agregar, duplicar, reordenar, eliminar), descuentos, recargos e impuestos manuales, ARS/USD, vista previa y borrador local.
+- Motor de cálculo con precisión decimal (`decimal.js`) y pruebas.
+- PDF A4 real con seis diseños distintos (1 gratuito + 5 premium), paginación y vista previa con marca de agua.
+- Compartir por WhatsApp (enlace con texto; el PDF se adjunta manualmente) y compartir el PDF con el menú nativo del dispositivo.
+- Cuentas (Auth.js, argon2id), recuperación de contraseña, sesiones invalidables.
+- Plan gratuito con límite mensual aplicado en el servidor, Pack Premium (pago único) y Pro (mensual/anual) con Mercado Pago.
+- Dashboard: inicio, presupuestos, clientes, mi negocio, plantillas, mi plan, configuración (exportación y eliminación de cuenta).
+- Emails transaccionales con Resend.
+- Docker, healthcheck, scripts de despliegue/rollback/backup, CI en GitHub Actions.
+
+Detalle de planes y permisos: [`docs/plans.md`](docs/plans.md).
+
+## Estado
+
+| Área | Estado |
+| --- | --- |
+| Aplicación, tests, build | Implementado y probado |
+| Mercado Pago (Checkout Pro, suscripciones, webhooks) | Implementado y probado **con un doble del proveedor**. No validado con credenciales reales ni con cobros reales |
+| Resend | Implementado y probado con el SDK simulado. Sin credenciales no se envía nada |
+| Infraestructura (Docker, compose, scripts) | Imagen, migraciones, backup y restauración verificados en local. **No desplegado** en el VPS |
+| Facturación electrónica (ARCA) | No implementada: los PDF son presupuestos comerciales sin validez fiscal |
+
+## Desarrollo rápido
 
 ```bash
 pnpm install
-cp .env.example .env
+docker compose -f docker-compose.dev.yml up -d   # PostgreSQL de desarrollo (puerto 54329)
+cp .env.example .env                             # completar DATABASE_URL y AUTH_SECRET
+pnpm exec prisma migrate deploy
 pnpm dev
 ```
 
-Scripts: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`.
+Guía completa: [`docs/development.md`](docs/development.md).
 
-## Estructura
+## Scripts
 
-- `src/app`: rutas y presentación (Next.js App Router).
-- `src/domain`: lógica de negocio pura (presupuestos, cálculos, planes).
-- `src/services`: casos de uso que coordinan dominio y persistencia.
-- `src/integrations`: adaptadores externos (Mercado Pago, Resend).
-- `src/server`: acceso a datos, autenticación, autorización.
-- `prisma`: esquema y migraciones.
+| Comando | Acción |
+| --- | --- |
+| `pnpm dev` / `pnpm build` / `pnpm start` | Desarrollo, build y servidor |
+| `pnpm lint` / `pnpm typecheck` | Calidad estática |
+| `pnpm test` | Vitest (unidad e integración; las de base requieren `TEST_DATABASE_URL`) |
+| `pnpm test:e2e` | Playwright (usar `E2E_PROD=1` tras `pnpm build` para correr contra producción) |
+
+## Documentación
+
+- [Arquitectura](docs/architecture.md)
+- [Desarrollo local](docs/development.md)
+- [Despliegue](docs/deploy.md)
+- [Mercado Pago](docs/mercadopago.md)
+- [Resend](docs/resend.md)
+- [Backups y restauración](docs/backups.md)
+- [Planes y permisos](docs/plans.md)

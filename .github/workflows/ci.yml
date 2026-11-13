@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Lint, tipos, pruebas y build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: presupuestos
+          POSTGRES_PASSWORD: ci_password
+          POSTGRES_DB: presupuestos_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U presupuestos"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Base efímera del servicio de CI: no contiene datos reales.
+      TEST_DATABASE_URL: postgresql://presupuestos:ci_password@localhost:5432/presupuestos_test?schema=public
+      DATABASE_URL: postgresql://presupuestos:ci_password@localhost:5432/presupuestos_test?schema=public
+      AUTH_SECRET: ci-secret-not-for-production-0123456789abcdef
+      AUTH_TRUST_HOST: "true"
+      APP_URL: http://localhost:3100
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Generar cliente de Prisma
+        run: pnpm exec prisma generate
+
+      - name: Aplicar migraciones a la base de pruebas
+        run: pnpm exec prisma migrate deploy
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Pruebas unitarias y de integración
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Instalar navegador para E2E
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: E2E (contra el build de producción)
+        run: pnpm test:e2e
+        env:
+          CI: "true"
+
+      - name: Subir reporte de Playwright si falla
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
+
+  audit:
+    name: Auditoría de dependencias
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Vulnerabilidades de producción (alta o crítica)
+        run: pnpm audit --prod --audit-level high
+        continue-on-error: true
