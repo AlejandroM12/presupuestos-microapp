@@ -50,3 +50,22 @@ export function passwordResetEmail(to: string, url: string): EmailMessage {
   };
   return { to, subject: "Recuperá tu contraseña", html: layout(content), text: toText(content) };
 }
+
+export function packPurchasedEmail(to: string): EmailMessage {
+  const content: LayoutInput = {
+    preheader: "Tu Pack Premium ya está activo.",
+    title: "¡Listo! Tu Pack Premium está activo",
+    paragraphs: [
+      "Recibimos tu pago y activamos los 5 diseños premium en tu cuenta: Ejecutivo, Moderno, Creativo, Técnico y Comercial.",
+      "Además, tus PDF ya no llevan la marca de AtajoLab y podés personalizar los colores. El acceso es permanente.",
+    ],
+    cta: { label: "Crear un presupuesto", url: `${siteConfig.url}/crear` },
+    footnote: "Guardá este correo como comprobante de tu compra.",
+  };
+  return {
+    to,
+    subject: "Tu Pack Premium está activo",
+    html: layout(content),
+    text: toText(content),
+  };
+}

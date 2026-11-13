@@ -1,8 +1,8 @@
 "use client";
 
 import { Eye, Lock } from "lucide-react";
-import Link from "next/link";
 import type { UseFormSetValue } from "react-hook-form";
+import { BuyPackButton } from "@/components/billing/buy-pack-button";
 import { TemplateThumb } from "@/components/marketing/template-thumb";
 import { Button } from "@/components/ui/button";
 import type { Entitlements } from "@/domain/entitlements";
@@ -87,12 +87,7 @@ export function DesignSection({
           >
             <Eye data-icon="inline-start" /> Ver vista previa
           </Button>
-          <Link
-            href="/#precios"
-            className="text-sm font-medium text-ink underline underline-offset-4"
-          >
-            Ver Pack Premium
-          </Link>
+          <BuyPackButton authenticated={entitlements.authenticated} returnTo="/crear" />
         </div>
       )}
 
