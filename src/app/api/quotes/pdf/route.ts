@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   const quote = parsed.data;
 
   const preview = new URL(request.url).searchParams.get("preview") === "1";
-  const access = await getAccessContext(request);
+  const access = await getAccessContext();
   const decision = decidePdfRender(access, {
     templateId: quote.templateId,
     preview,

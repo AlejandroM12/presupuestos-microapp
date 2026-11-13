@@ -197,8 +197,11 @@ function EditorForm({ initial, restored }: { initial: QuoteDraft; restored: bool
             <p className="sr-only text-xs text-muted-foreground sm:not-sr-only" role="status">
               {savedLabel}
             </p>
-            <Link href="/ingresar" className={buttonVariants({ variant: "ghost", size: "lg" })}>
-              Ingresar
+            <Link
+              href={entitlements.authenticated ? "/dashboard" : "/ingresar?next=/crear"}
+              className={buttonVariants({ variant: "ghost", size: "lg" })}
+            >
+              {entitlements.authenticated ? "Mi cuenta" : "Ingresar"}
             </Link>
           </div>
         </div>

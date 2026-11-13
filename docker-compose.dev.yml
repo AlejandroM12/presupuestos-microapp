@@ -1,0 +1,21 @@
+# Base de datos local de desarrollo. No se usa en producción.
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: presupuestos-dev-db
+    environment:
+      POSTGRES_USER: presupuestos
+      POSTGRES_PASSWORD: presupuestos_dev
+      POSTGRES_DB: presupuestos
+    ports:
+      - "127.0.0.1:54329:5432"
+    volumes:
+      - presupuestos_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U presupuestos"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  presupuestos_dev_data:
