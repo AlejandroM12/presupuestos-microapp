@@ -1,0 +1,15 @@
+# Agregar al Caddyfile existente (no reemplaza ni reinicia el resto de los sitios).
+# El contenedor `presupuestos-app` debe estar en la misma red Docker que Caddy.
+presupuestos.atajolab.dev {
+	encode zstd gzip
+	reverse_proxy presupuestos-app:3000 {
+		health_uri /api/health
+		health_interval 30s
+	}
+	log {
+		output file /var/log/caddy/presupuestos.log {
+			roll_size 10mb
+			roll_keep 5
+		}
+	}
+}

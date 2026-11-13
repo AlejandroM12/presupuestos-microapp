@@ -51,3 +51,8 @@ CLAUDE.md
 # playwright
 /test-results
 /playwright-report
+
+# despliegue
+/deploy/.env
+/deploy/backups
+/deploy/.deploy
