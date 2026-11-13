@@ -1,0 +1,132 @@
+// ---------------------------------------------------------------------------
+// Negocio y clientes
+// ---------------------------------------------------------------------------
+
+model BusinessProfile {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @unique @db.Uuid
+  businessName     String
+  professionalName String   @default("")
+  /// Logo como data URL (PNG/JPEG ya redimensionado y validado, máx. ~400 KB).
+  logo             String   @default("")
+  email            String   @default("")
+  phone            String   @default("")
+  whatsapp         String   @default("")
+  address          String   @default("")
+  taxId            String   @default("")
+  website          String   @default("")
+  accentColor      String   @default("")
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("business_profiles")
+}
+
+model Customer {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  name      String
+  company   String   @default("")
+  email     String   @default("")
+  phone     String   @default("")
+  address   String   @default("")
+  taxId     String   @default("")
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quotes Quote[]
+
+  @@index([userId, name])
+  @@map("customers")
+}
+
+// ---------------------------------------------------------------------------
+// Presupuestos
+// ---------------------------------------------------------------------------
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+}
+
+enum CurrencyCode {
+  ARS
+  USD
+}
+
+enum AdjustmentKind {
+  PERCENT
+  FIXED
+}
+
+model Quote {
+  id           String       @id @default(uuid()) @db.Uuid
+  userId       String       @db.Uuid
+  /// Vínculo opcional: el dato histórico vive en customerSnapshot.
+  customerId   String?      @db.Uuid
+  number       String
+  status       QuoteStatus  @default(DRAFT)
+  title        String
+  description  String       @default("")
+  currency     CurrencyCode
+  issueDate    DateTime     @db.Date
+  validityDays Int
+  notes        String       @default("")
+  terms        String       @default("")
+  deliveryTime String       @default("")
+  paymentTerms String       @default("")
+  templateId   String
+  accentColor  String       @default("")
+
+  discountKind   AdjustmentKind @default(PERCENT)
+  discountValue  Decimal        @default(0) @db.Decimal(18, 4)
+  surchargeKind  AdjustmentKind @default(PERCENT)
+  surchargeValue Decimal        @default(0) @db.Decimal(18, 4)
+  /// Lista de impuestos manuales: id, label, type (percent o fixed) y value.
+  taxes          Json           @default("[]")
+
+  /// Copia de los datos del emisor y del cliente al momento de guardar.
+  issuerSnapshot   Json
+  customerSnapshot Json
+
+  subtotal       Decimal @db.Decimal(18, 2)
+  discountTotal  Decimal @db.Decimal(18, 2)
+  surchargeTotal Decimal @db.Decimal(18, 2)
+  taxTotal       Decimal @db.Decimal(18, 2)
+  total          Decimal @db.Decimal(18, 2)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customer Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items    QuoteItem[]
+
+  @@index([userId, updatedAt])
+  @@index([userId, status])
+  @@index([customerId])
+  @@map("quotes")
+}
+
+model QuoteItem {
+  id              String  @id @default(uuid()) @db.Uuid
+  quoteId         String  @db.Uuid
+  position        Int
+  description     String
+  quantity        Decimal @db.Decimal(18, 4)
+  unit            String
+  unitPrice       Decimal @db.Decimal(18, 4)
+  discountPercent Decimal @default(0) @db.Decimal(7, 4)
+  /// Importe de la línea ya calculado y redondeado a 2 decimales.
+  amount          Decimal @db.Decimal(18, 2)
+
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@unique([quoteId, position])
+  @@map("quote_items")
+}

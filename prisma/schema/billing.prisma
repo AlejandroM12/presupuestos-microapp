@@ -1,0 +1,147 @@
+// ---------------------------------------------------------------------------
+// Catálogo, compras, suscripciones y uso
+// ---------------------------------------------------------------------------
+
+enum TemplateTier {
+  FREE
+  PREMIUM
+}
+
+/// Catálogo de plantillas. La composición visual vive en el código; aquí solo el registro comercial.
+model Template {
+  id        String       @id
+  name      String
+  tier      TemplateTier
+  active    Boolean      @default(true)
+  sortOrder Int          @default(0)
+
+  @@map("templates")
+}
+
+enum PaymentKind {
+  PREMIUM_PACK
+  SUBSCRIPTION
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REFUNDED
+  CANCELLED
+}
+
+model Payment {
+  id                String        @id @default(uuid()) @db.Uuid
+  userId            String        @db.Uuid
+  kind              PaymentKind
+  provider          String        @default("mercadopago")
+  /// Referencia que enviamos al proveedor para conciliar (única por intento de pago).
+  externalReference String        @unique
+  providerPaymentId String?
+  amount            Decimal       @db.Decimal(18, 2)
+  currency          CurrencyCode  @default(ARS)
+  status            PaymentStatus @default(PENDING)
+  providerStatus    String        @default("")
+  subscriptionId    String?       @db.Uuid
+  createdAt         DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime      @updatedAt @db.Timestamptz(3)
+
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription Subscription?     @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  purchase     TemplatePurchase?
+
+  @@unique([provider, providerPaymentId])
+  @@index([userId, createdAt])
+  @@map("payments")
+}
+
+model TemplatePurchase {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  /// Código del producto adquirido (por ahora solo "premium_pack").
+  product   String
+  paymentId String   @unique @db.Uuid
+  grantedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, product])
+  @@map("template_purchases")
+}
+
+enum SubscriptionPlan {
+  MONTHLY
+  YEARLY
+}
+
+enum SubscriptionStatus {
+  PENDING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+model Subscription {
+  id                     String             @id @default(uuid()) @db.Uuid
+  userId                 String             @db.Uuid
+  plan                   SubscriptionPlan
+  status                 SubscriptionStatus @default(PENDING)
+  provider               String             @default("mercadopago")
+  providerSubscriptionId String?
+  /// Fin del período pagado: el acceso Pro se mantiene hasta esta fecha aun si se cancela.
+  currentPeriodEnd       DateTime?          @db.Timestamptz(3)
+  canceledAt             DateTime?          @db.Timestamptz(3)
+  createdAt              DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime           @updatedAt @db.Timestamptz(3)
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@unique([provider, providerSubscriptionId])
+  @@index([userId, status])
+  @@map("subscriptions")
+}
+
+enum WebhookStatus {
+  RECEIVED
+  PROCESSED
+  FAILED
+  IGNORED
+}
+
+/// Eventos entrantes del proveedor de pagos, persistidos para idempotencia y auditoría.
+model WebhookEvent {
+  id          String        @id @default(uuid()) @db.Uuid
+  provider    String
+  /// Identificador único del evento o recurso, para deduplicar reintentos.
+  eventKey    String
+  type        String
+  payload     Json
+  status      WebhookStatus @default(RECEIVED)
+  attempts    Int           @default(0)
+  error       String?
+  receivedAt  DateTime      @default(now()) @db.Timestamptz(3)
+  processedAt DateTime?     @db.Timestamptz(3)
+
+  @@unique([provider, eventKey])
+  @@index([status, receivedAt])
+  @@map("webhook_events")
+}
+
+/// Una fila por PDF final descargado; el límite mensual se calcula contando por período.
+model DownloadUsage {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  /// Mes calendario en UTC con formato YYYY-MM.
+  periodKey  String
+  templateId String
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, periodKey])
+  @@map("download_usage")
+}

@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { ANONYMOUS, type AccessContext } from "@/domain/entitlements";
+import { loadAccessContext } from "@/services/access";
 
 /**
  * Resuelve el contexto de acceso de la persona que hace la solicitud.
@@ -8,5 +9,5 @@ import { ANONYMOUS, type AccessContext } from "@/domain/entitlements";
 export async function getAccessContext(): Promise<AccessContext> {
   const session = await auth();
   if (!session?.user?.id) return ANONYMOUS;
-  return { ...ANONYMOUS, authenticated: true };
+  return loadAccessContext(session.user.id);
 }

@@ -1,12 +1,3 @@
-generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
-}
-
-datasource db {
-  provider = "postgresql"
-}
-
 // ---------------------------------------------------------------------------
 // Autenticación (compatible con el esquema de adaptadores de Auth.js)
 // ---------------------------------------------------------------------------
@@ -27,6 +18,13 @@ model User {
   accounts            Account[]
   sessions            Session[]
   passwordResetTokens PasswordResetToken[]
+  businessProfile     BusinessProfile?
+  customers           Customer[]
+  quotes              Quote[]
+  payments            Payment[]
+  purchases           TemplatePurchase[]
+  subscriptions       Subscription[]
+  downloads           DownloadUsage[]
 
   @@map("users")
 }

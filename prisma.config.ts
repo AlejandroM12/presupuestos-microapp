@@ -8,7 +8,7 @@ try {
 }
 
 export default defineConfig({
-  schema: "prisma/schema.prisma",
+  schema: "prisma/schema",
   migrations: { path: "prisma/migrations" },
   datasource: { url: process.env.DATABASE_URL ?? "" },
 });
