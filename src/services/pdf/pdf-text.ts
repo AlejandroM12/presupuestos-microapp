@@ -6,7 +6,12 @@ export async function extractPdfPages(pdf: Buffer): Promise<string[]> {
   for (let i = 1; i <= doc.numPages; i++) {
     const page = await doc.getPage(i);
     const content = await page.getTextContent();
-    pages.push(content.items.map((it) => ("str" in it ? it.str : "")).join(" "));
+    pages.push(
+      content.items
+        .map((it) => ("str" in it ? it.str : ""))
+        .join(" ")
+        .replace(/\s+/g, " "),
+    );
   }
   return pages;
 }

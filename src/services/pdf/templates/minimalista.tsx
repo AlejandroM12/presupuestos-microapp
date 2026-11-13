@@ -1,6 +1,7 @@
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import {
   contactLine,
+  PreviewMark,
   customerLines,
   Logo,
   NoteBlock,
@@ -180,6 +181,7 @@ export function MinimalistaDocument({ m }: { m: PdfModel }) {
         </View>
 
         <PageFooter m={m} />
+        <PreviewMark m={m} />
       </Page>
     </Document>
   );

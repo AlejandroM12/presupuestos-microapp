@@ -11,6 +11,8 @@ export interface PdfRenderOptions {
   showBrand: boolean;
   /** Permite usar el color personalizado del presupuesto. */
   allowCustomColor: boolean;
+  /** Vista previa: agrega marca de agua y no es el documento final. */
+  preview?: boolean;
 }
 
 export interface PdfItemRow {
@@ -29,6 +31,7 @@ export interface PdfModel {
   currency: Currency;
   accent: string;
   showBrand: boolean;
+  preview: boolean;
   issueDate: string;
   validUntilDate: string;
   rows: PdfItemRow[];
@@ -65,6 +68,7 @@ export function buildPdfModel(quote: Quote, options: PdfRenderOptions): PdfModel
     currency,
     accent,
     showBrand: options.showBrand,
+    preview: options.preview ?? false,
     issueDate: formatDateAr(quote.date),
     validUntilDate: formatDateAr(validUntil(quote.date, quote.validityDays)),
     rows,

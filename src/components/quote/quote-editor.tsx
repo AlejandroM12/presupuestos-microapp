@@ -19,6 +19,7 @@ import {
   saveBlob,
   sharePdfNatively,
 } from "@/lib/pdf-client";
+import { useEntitlements } from "@/lib/use-entitlements";
 import { cn } from "@/lib/utils";
 import {
   AdjustmentsSection,
@@ -27,6 +28,7 @@ import {
   IssuerSection,
   ItemsSection,
 } from "./form-sections";
+import { DesignSection } from "./design-section";
 import { QuotePreview } from "./quote-preview";
 
 type Loaded = { quote: QuoteDraft; restored: boolean; savedAt: string };
@@ -70,6 +72,7 @@ function EditorForm({ initial, restored }: { initial: QuoteDraft; restored: bool
   const [shareError, setShareError] = useState("");
   const [pdfBusy, setPdfBusy] = useState(false);
   const [nativeShare, setNativeShare] = useState(false);
+  const entitlements = useEntitlements();
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- depende de APIs del navegador
@@ -107,6 +110,7 @@ function EditorForm({ initial, restored }: { initial: QuoteDraft; restored: bool
     };
   }, [values]);
 
+  const designLocked = !entitlements.templates.includes(values.templateId);
   const currency = values.currency === "USD" ? "USD" : "ARS";
 
   /** Valida el formulario; si es inválido muestra el aviso y vuelve a la pestaña de edición. */
@@ -139,6 +143,29 @@ function EditorForm({ initial, restored }: { initial: QuoteDraft; restored: bool
       saveBlob(blob, fileName);
     } catch (err) {
       setShareError(err instanceof PdfRequestError ? err.message : "No pudimos generar el PDF.");
+      setTab("edit");
+    } finally {
+      setPdfBusy(false);
+    }
+  }
+
+  /** Vista previa del PDF con marca de agua; se abre en una pestaña para que funcione en el celular. */
+  async function previewDesign() {
+    const q = await validQuote("ver la vista previa");
+    if (!q) return;
+    const tab = window.open("", "_blank");
+    setPdfBusy(true);
+    try {
+      const { blob } = await requestQuotePdf(q, { preview: true });
+      const url = URL.createObjectURL(blob);
+      if (tab) tab.location.href = url;
+      else window.location.assign(url);
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (err) {
+      tab?.close();
+      setShareError(
+        err instanceof PdfRequestError ? err.message : "No pudimos generar la vista previa.",
+      );
       setTab("edit");
     } finally {
       setPdfBusy(false);
@@ -239,19 +266,33 @@ function EditorForm({ initial, restored }: { initial: QuoteDraft; restored: bool
             currency={currency}
           />
           <AdjustmentsSection control={control} register={register} errors={formState.errors} />
+          <DesignSection
+            templateId={values.templateId}
+            accentColor={values.accentColor ?? ""}
+            entitlements={entitlements}
+            setValue={setValue}
+            onPreview={previewDesign}
+            previewBusy={pdfBusy}
+          />
         </form>
 
         <aside
           className={cn("lg:sticky lg:top-20 lg:self-start", tab === "edit" && "hidden lg:block")}
         >
-          <QuotePreview quote={values} totals={totals} />
+          <QuotePreview
+            quote={{
+              ...values,
+              accentColor: entitlements.allowCustomColor ? values.accentColor : "",
+            }}
+            totals={totals}
+          />
           <div className="mx-auto mt-5 max-w-[640px] space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 type="button"
                 size="lg"
                 className="h-10 px-4"
-                disabled={pdfBusy}
+                disabled={pdfBusy || designLocked}
                 onClick={() => downloadPdf(false)}
               >
                 {pdfBusy ? (
@@ -267,7 +308,7 @@ function EditorForm({ initial, restored }: { initial: QuoteDraft; restored: bool
                   variant="outline"
                   size="lg"
                   className="h-10 px-4"
-                  disabled={pdfBusy}
+                  disabled={pdfBusy || designLocked}
                   onClick={() => downloadPdf(true)}
                 >
                   <Share2 data-icon="inline-start" /> Compartir PDF
@@ -315,6 +356,12 @@ function EditorForm({ initial, restored }: { initial: QuoteDraft; restored: bool
                 </Button>
               )}
             </div>
+            {designLocked && (
+              <p className="text-xs text-ink">
+                El diseño elegido es premium: para descargarlo necesitás el Pack Premium. Podés ver
+                la vista previa en la sección &quot;Diseño del PDF&quot;.
+              </p>
+            )}
             <p className="text-xs text-muted-foreground">
               WhatsApp abre un mensaje con el resumen. El PDF no se adjunta solo: descargalo y
               adjuntalo en la conversación.

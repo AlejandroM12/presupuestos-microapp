@@ -5,6 +5,58 @@ type Style = Styles[string];
 import type { PdfModel } from "./model";
 
 export const PAGE_PADDING = 44;
+
+/** Mezcla un color hex con blanco: ratio 0 = blanco, 1 = color original. */
+export function tint(hex: string, ratio: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const mixc = (c: number) => Math.round(255 - (255 - c) * ratio);
+  const r = mixc((n >> 16) & 255);
+  const g = mixc((n >> 8) & 255);
+  const b = mixc(n & 255);
+  return `#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+}
+
+/** Color de texto legible (blanco o casi negro) sobre un fondo dado. */
+export function readableOn(hex: string): string {
+  const n = parseInt(hex.slice(1), 16);
+  const lum = 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255);
+  return lum > 160 ? "#111827" : "#ffffff";
+}
+
+/** Marca de agua diagonal para las vistas previas de diseños que aún no se compraron. */
+export function PreviewMark({ m }: { m: PdfModel }) {
+  if (!m.preview) return null;
+  return (
+    <View
+      fixed
+      style={{
+        position: "absolute",
+        top: 330,
+        left: 40,
+        width: 515,
+        alignItems: "center",
+        transform: "rotate(-32deg)",
+      }}
+    >
+      <Text
+        style={{
+          fontFamily: "Inter",
+          fontSize: 62,
+          fontWeight: 700,
+          color: "#dc2626",
+          opacity: 0.13,
+        }}
+      >
+        VISTA PREVIA
+      </Text>
+      <Text
+        style={{ fontFamily: "Inter", fontSize: 16, color: "#dc2626", opacity: 0.2, marginTop: 4 }}
+      >
+        AtajoLab Presupuestos · no es el documento final
+      </Text>
+    </View>
+  );
+}
 export const LEGAL_NOTE =
   "Presupuesto comercial. Este documento no constituye una factura ni tiene validez fiscal.";
 export const BRAND_NOTE = "Creado con AtajoLab Presupuestos · presupuestos.atajolab.dev";
@@ -21,6 +73,17 @@ export function contactLine(m: PdfModel): string {
   return [i.email, i.phone && `Tel. ${i.phone}`, i.whatsapp && `WhatsApp ${i.whatsapp}`, i.website]
     .filter(Boolean)
     .join("  ·  ");
+}
+
+/** Datos de contacto, uno por línea (para columnas angostas). */
+export function contactLines(m: PdfModel): string[] {
+  const i = m.quote.issuer;
+  return [
+    i.email,
+    i.phone && `Tel. ${i.phone}`,
+    i.whatsapp && `WhatsApp ${i.whatsapp}`,
+    i.website,
+  ].filter((x): x is string => Boolean(x));
 }
 
 export function customerLines(m: PdfModel): string[] {
@@ -45,10 +108,12 @@ export function PageFooter({
   m,
   color = "#94a3b8",
   font = "Inter",
+  left = PAGE_PADDING,
 }: {
   m: PdfModel;
   color?: string;
   font?: string;
+  left?: number;
 }) {
   const base: Style = { position: "absolute", bottom: 22, fontFamily: font, fontSize: 7, color };
   return (
@@ -59,7 +124,7 @@ export function PageFooter({
         style={{ ...base, right: PAGE_PADDING, width: 100, textAlign: "right", lineHeight: 0 }}
         render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`}
       />
-      <View fixed style={{ ...base, left: PAGE_PADDING, maxWidth: 380 }}>
+      <View fixed style={{ ...base, left, maxWidth: 360 }}>
         <Text>{LEGAL_NOTE}</Text>
         {m.showBrand ? <Text style={{ marginTop: 2 }}>{BRAND_NOTE}</Text> : null}
       </View>

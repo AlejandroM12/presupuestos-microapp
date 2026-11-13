@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { defaultQuote } from "@/domain/quote/defaults";
+import { TEMPLATES } from "@/domain/templates";
 import { quoteSchema, type Quote } from "@/domain/quote/schema";
 import { buildPdfModel, pdfFileName } from "./model";
 import { extractPdfPages } from "./pdf-text";
@@ -34,6 +35,7 @@ function sampleQuote(itemCount = 3, over: Partial<Quote> = {}): Quote {
 }
 
 const options = { templateId: "minimalista", showBrand: true, allowCustomColor: false };
+const PREMIUM_IDS = TEMPLATES.filter((t) => t.tier === "premium").map((t) => t.id);
 
 function pageCount(pdf: Buffer): number {
   return (pdf.toString("latin1").match(/\/Type\s*\/Page[^s]/g) ?? []).length;
@@ -88,6 +90,53 @@ describe("renderQuotePdf", () => {
     q.issuer.logo = png;
     const pdf = await renderQuotePdf(q, options);
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+  });
+});
+
+describe.each(TEMPLATES.map((t) => t.id))("plantilla %s", (templateId) => {
+  const opts = { ...options, templateId, showBrand: templateId === "minimalista" };
+
+  it("genera un PDF de una página con los datos principales", async () => {
+    const pdf = await renderQuotePdf(sampleQuote(), opts);
+    expect(pageCount(pdf)).toBe(1);
+    const text = (await extractPdfPages(pdf)).join(" ");
+    expect(text).toContain("Electro Sur");
+    expect(text).toContain("Laura Benítez");
+    expect(text).toContain("8.813,52");
+    expect(text).toContain("Página 1 de 1");
+    expect(text).toContain("no constituye una factura");
+  });
+
+  it("pagina sin cortar conceptos y numera todas las páginas", async () => {
+    const pages = await extractPdfPages(await renderQuotePdf(sampleQuote(60), opts));
+    expect(pages.length).toBeGreaterThan(1);
+    pages.forEach((text, i) => expect(text).toContain(`Página ${i + 1} de ${pages.length}`));
+    const all = pages.join(" ");
+    for (const n of [1, 30, 60]) expect(all).toContain(`Concepto número ${n} `);
+    // el bloque de totales no se parte ni se repite entre páginas
+    expect(pages.filter((p) => /subtotal/i.test(p))).toHaveLength(1);
+  });
+
+  it("agrega marca de agua solo en la vista previa", async () => {
+    const preview = (
+      await extractPdfPages(await renderQuotePdf(sampleQuote(), { ...opts, preview: true }))
+    ).join(" ");
+    const final = (await extractPdfPages(await renderQuotePdf(sampleQuote(), opts))).join(" ");
+    expect(preview).toContain("VISTA PREVIA");
+    expect(final).not.toContain("VISTA PREVIA");
+  });
+});
+
+describe("marca AtajoLab por diseño", () => {
+  it("los diseños premium no la incluyen", async () => {
+    for (const id of PREMIUM_IDS) {
+      const text = (
+        await extractPdfPages(
+          await renderQuotePdf(sampleQuote(), { ...options, templateId: id, showBrand: false }),
+        )
+      ).join(" ");
+      expect(text).not.toContain("AtajoLab");
+    }
   });
 });
 

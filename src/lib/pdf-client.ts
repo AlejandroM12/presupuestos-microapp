@@ -8,10 +8,13 @@ function fileNameFrom(response: Response): string {
 }
 
 /** Pide el PDF al servidor. El servidor valida de nuevo el presupuesto y los permisos. */
-export async function requestQuotePdf(quote: Quote): Promise<{ blob: Blob; fileName: string }> {
+export async function requestQuotePdf(
+  quote: Quote,
+  { preview = false }: { preview?: boolean } = {},
+): Promise<{ blob: Blob; fileName: string }> {
   let response: Response;
   try {
-    response = await fetch("/api/quotes/pdf", {
+    response = await fetch(`/api/quotes/pdf${preview ? "?preview=1" : ""}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(quote),

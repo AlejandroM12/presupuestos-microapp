@@ -1,17 +1,18 @@
 import { NextResponse } from "next/server";
+import { DENIAL_MESSAGES, DENIAL_STATUS, decidePdfRender } from "@/domain/entitlements";
 import { quoteSchema } from "@/domain/quote/schema";
-import { FREE_TEMPLATE_ID } from "@/domain/templates";
+import { getAccessContext } from "@/server/access";
+import { clientIp, RateLimiter } from "@/server/rate-limit";
 import { pdfFileName } from "@/services/pdf/model";
 import { renderQuotePdf } from "@/services/pdf/render";
-import { clientIp, RateLimiter } from "@/server/rate-limit";
 
 export const runtime = "nodejs";
 
 const MAX_BODY_BYTES = 1_000_000;
 const limiter = new RateLimiter(20, 60_000);
 
-function error(status: number, message: string, headers?: HeadersInit) {
-  return NextResponse.json({ error: message }, { status, headers });
+function error(status: number, message: string, headers?: HeadersInit, code?: string) {
+  return NextResponse.json({ error: message, code }, { status, headers });
 }
 
 export async function POST(request: Request) {
@@ -44,18 +45,35 @@ export async function POST(request: Request) {
   if (!parsed.success) return error(422, "El presupuesto tiene datos inválidos o incompletos.");
   const quote = parsed.data;
 
+  const preview = new URL(request.url).searchParams.get("preview") === "1";
+  const access = await getAccessContext(request);
+  const decision = decidePdfRender(access, {
+    templateId: quote.templateId,
+    preview,
+    // Transitorio hasta activar cuentas y límites (ver Feature de autenticación).
+    allowAnonymousFreeDownload: true,
+  });
+  if (!decision.allowed) {
+    return error(
+      DENIAL_STATUS[decision.reason],
+      DENIAL_MESSAGES[decision.reason],
+      undefined,
+      decision.reason,
+    );
+  }
+
   try {
-    // Hasta que existan cuentas y licencias, solo se emite el diseño gratuito con marca.
     const pdf = await renderQuotePdf(quote, {
-      templateId: FREE_TEMPLATE_ID,
-      showBrand: true,
-      allowCustomColor: false,
+      templateId: quote.templateId,
+      showBrand: decision.showBrand,
+      allowCustomColor: decision.allowCustomColor,
+      preview: decision.preview,
     });
     return new Response(new Uint8Array(pdf), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${pdfFileName(quote)}"`,
+        "Content-Disposition": `${decision.preview ? "inline" : "attachment"}; filename="${pdfFileName(quote)}"`,
         "Cache-Control": "no-store",
         "X-Content-Type-Options": "nosniff",
       },
