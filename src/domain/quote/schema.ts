@@ -18,7 +18,14 @@ const optionalUrl = z
   ])
   .default("");
 const phone = z
-  .union([z.literal(""), z.string().trim().max(30).regex(/^[+\d][\d\s()\-.]{5,}$/, "Teléfono inválido")])
+  .union([
+    z.literal(""),
+    z
+      .string()
+      .trim()
+      .max(30)
+      .regex(/^[+\d][\d\s()\-.]{5,}$/, "Teléfono inválido"),
+  ])
   .default("");
 /** CUIT (11 dígitos, con o sin guiones) o DNI (7-8 dígitos). */
 const taxId = z
@@ -104,7 +111,11 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida");
 export const quoteSchema = z.object({
   number: text(30).min(1, "Ingresá el número"),
   date: isoDate,
-  validityDays: z.coerce.number().int().min(1, "Mínimo 1 día").max(365, "Máximo 365 días"),
+  validityDays: z
+    .number("Ingresá los días")
+    .int()
+    .min(1, "Mínimo 1 día")
+    .max(365, "Máximo 365 días"),
   title: text(160).min(1, "Ingresá un título"),
   description: optionalText(2000),
   currency: z.enum(CURRENCIES),

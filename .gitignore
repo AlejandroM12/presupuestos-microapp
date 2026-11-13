@@ -47,3 +47,7 @@ CLAUDE.md
 
 # prisma
 /src/generated
+
+# playwright
+/test-results
+/playwright-report

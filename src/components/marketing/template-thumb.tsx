@@ -47,7 +47,10 @@ export function TemplateThumb({ template }: { template: TemplateMeta }) {
     case "creativo":
       return (
         <div className={shell} aria-hidden>
-          <div className="absolute -right-6 -top-6 size-20 rounded-full" style={{ background: c }} />
+          <div
+            className="absolute -right-6 -top-6 size-20 rounded-full"
+            style={{ background: c }}
+          />
           <div
             className="absolute -bottom-8 -left-6 size-24 rotate-12"
             style={{ background: c, opacity: 0.25 }}

@@ -1,6 +1,6 @@
 /** Ejemplo visual estático de un presupuesto (datos ficticios, solo ilustrativos). */
 const rows = [
-  { d: "Tablero eléctrico trifásico", q: "1", u: "$ 184.000" },
+  { d: "Tablero eléctrico trifásico", q: "1 u", u: "$ 184.000" },
   { d: "Cableado y canalización", q: "42 m", u: "$ 3.150" },
   { d: "Mano de obra", q: "12 h", u: "$ 9.800" },
 ];

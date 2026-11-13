@@ -29,7 +29,10 @@ export function Hero() {
           </Link>
           <a
             href="#plantillas"
-            className={cn(buttonVariants({ variant: "outline", size: "lg" }), "h-11 px-5 text-base")}
+            className={cn(
+              buttonVariants({ variant: "outline", size: "lg" }),
+              "h-11 px-5 text-base",
+            )}
           >
             Ver plantillas
           </a>

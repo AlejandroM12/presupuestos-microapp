@@ -1,11 +1,4 @@
-import {
-  Calculator,
-  FileDown,
-  LayoutTemplate,
-  MessageCircle,
-  Smartphone,
-  Zap,
-} from "lucide-react";
+import { Calculator, FileDown, LayoutTemplate, MessageCircle, Smartphone, Zap } from "lucide-react";
 
 const items = [
   {
