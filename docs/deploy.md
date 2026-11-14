@@ -11,27 +11,53 @@ Cloudflare (DNS) → Caddy existente (HTTPS) → presupuestos-app:3000  (sin pue
 
 Las imágenes se construyen en GitHub Actions (`.github/workflows/docker.yml`) y se publican en `ghcr.io/alejandrom12/presupuestos-microapp` (app) y `…-migrate` (migraciones). El VPS solo hace `pull`: no compila.
 
-## Verificaciones previas (requieren autorización)
+## Inspección del VPS (hecha en modo solo lectura)
 
-1. Confirmar cómo corre Caddy (contenedor o servicio) y el nombre de la red Docker que comparte con las apps. Definir `PROXY_NETWORK`.
-2. Confirmar si hay un PostgreSQL reutilizable. Si lo hay: crear **una base y un usuario nuevos** (no compartir esquemas ni credenciales con Agendia/Adhera). Si no, usar el perfil `own-db` del compose.
-3. Verificar RAM/CPU libres (el contenedor está limitado a 640 MB).
-4. Crear el registro DNS `presupuestos` en Cloudflare (CNAME/A hacia el VPS) **solo cuando se vaya a publicar**.
+Acceso: `ssh -i ~/.ssh/atajolab_prod deploy@167.233.65.236`. Hallazgos verificados:
+
+- Ubuntu, 4 GB de RAM (~2,9 GB disponibles), disco 38 GB con 30 GB libres.
+- Puertos públicos: solo 22, 80 y 443.
+- `/opt/atajolab/{apps,backups,proxy}`; `apps/agendia` es la única app instalada. `proxy/` y `backups/` están vacíos.
+- **Caddy no es un servicio del host: corre dentro del compose de Agendia** (red Docker `agendia-edge`), y su Caddyfile hace `import sites/*.caddy` desde `/opt/atajolab/apps/agendia/deploy/sites/`.
+- Agendia tiene su propio PostgreSQL y un servicio de backup/offsite propios: **no se reutilizan**; Presupuestos usa su propio contenedor `db` (perfil `own-db`).
+- Limitación actual: el usuario `deploy` **no pertenece al grupo `docker`** y `sudo` pide contraseña, por lo que no se puede ejecutar Docker ni recargar Caddy desde esta sesión (ver `docs/PRODUCTION_CHECKLIST.md`).
+- El DNS de `presupuestos.atajolab.dev` no existe todavía.
+
+## Decisiones de despliegue
+
+- Directorio: `/opt/atajolab/apps/presupuestos` (junto a Agendia).
+- Red: `PROXY_NETWORK=agendia-edge` (la app se une a la red de Caddy; no publica puertos).
+- Base: servicio `db` incluido (`COMPOSE_PROFILES=own-db`), volumen propio, sin puertos publicados. Para backups, `PG_DOCKER_NETWORK=presupuestos_internal`.
+- Caddy: copiar `deploy/Caddyfile.snippet` a `/opt/atajolab/apps/agendia/deploy/sites/presupuestos.caddy` y recargar Caddy **sin reiniciarlo**. Es una modificación de una carpeta de Agendia: requiere autorización.
+- Cloudflare: crear un registro `A presupuestos → 167.233.65.236` (o el mismo tipo que use `atajolab.dev`). Si el proxy naranja está activo, usar SSL "Full (strict)". Crear el registro recién cuando la app esté levantada.
+
+## Qué hace falta para ejecutar el primer despliegue
+
+1. Agregar `deploy` al grupo `docker` (`sudo usermod -aG docker deploy`, requiere sudo; implica darle control equivalente a root sobre el host) **o** que otra persona con acceso ejecute los comandos de abajo.
+2. Un token de GitHub con `read:packages` para `docker login ghcr.io` (el paquete es privado).
+3. Completar `.env` en el servidor (ver más abajo) generando `AUTH_SECRET`, `CRON_SECRET` y `POSTGRES_PASSWORD` con `openssl rand -base64 32`.
 
 ## Primer despliegue
 
 ```bash
 # En el servidor, usuario deploy
-mkdir -p /opt/presupuestos && cd /opt/presupuestos
+mkdir -p /opt/atajolab/apps/presupuestos && cd /opt/atajolab/apps/presupuestos
 # copiar deploy/ (docker-compose.yml, scripts/, .env.production.example)
 cp .env.production.example .env && chmod 600 .env   # completar valores
+export COMPOSE_PROFILES=own-db
 docker login ghcr.io                                # token con permiso read:packages
 ./scripts/deploy.sh <tag>                           # tag = sha corto o vX.Y.Z
 ```
 
 `deploy.sh`: backup → pull → migraciones → `up -d` → espera el healthcheck. Si no queda saludable, vuelve al tag anterior.
 
-Agregar al Caddyfile existente el bloque de `deploy/Caddyfile.snippet` y recargar Caddy (`caddy reload`, sin reiniciar el resto de los sitios).
+Después: Caddy (ver arriba), DNS, y las tareas programadas (cron del usuario `deploy`):
+
+```
+0 * * * *   curl -fsS -X POST https://presupuestos.atajolab.dev/api/cron/billing -H "Authorization: Bearer $CRON_SECRET"
+15 3 * * *  cd /opt/atajolab/apps/presupuestos && ./scripts/backup.sh >> backup.log 2>&1
+*/5 * * * * cd /opt/atajolab/apps/presupuestos && ./scripts/monitor.sh >> monitor.log 2>&1
+```
 
 ## Variables de entorno
 
@@ -39,13 +65,7 @@ Ver `deploy/.env.production.example`. Obligatorias: `DATABASE_URL`, `APP_URL`, `
 
 ## Tarea programada de facturación
 
-Cada hora (cron del servidor):
-
-```bash
-curl -fsS -X POST https://presupuestos.atajolab.dev/api/cron/billing -H "Authorization: Bearer $CRON_SECRET"
-```
-
-Vence suscripciones cuyo período terminó y concilia con Mercado Pago ante webhooks perdidos.
+El cron horario de arriba vence suscripciones cuyo período terminó y concilia con Mercado Pago ante webhooks perdidos.
 
 ## Rollback
 

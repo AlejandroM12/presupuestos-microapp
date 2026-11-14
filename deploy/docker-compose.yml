@@ -66,9 +66,9 @@ services:
 networks:
   internal: {}
   proxy:
-    # Red compartida con el reverse proxy ya existente (Caddy). Ajustar el nombre real.
+    # Red compartida con el reverse proxy ya existente (Caddy). En el VPS es la red `agendia-edge` (Caddy corre en el compose de Agendia).
     external: true
-    name: ${PROXY_NETWORK:-proxy}
+    name: ${PROXY_NETWORK:-agendia-edge}
 
 volumes:
   presupuestos_pgdata: {}

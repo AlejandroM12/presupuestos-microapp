@@ -1,5 +1,8 @@
-# Agregar al Caddyfile existente (no reemplaza ni reinicia el resto de los sitios).
-# El contenedor `presupuestos-app` debe estar en la misma red Docker que Caddy.
+# Archivo a copiar como `sites/presupuestos.caddy` en el directorio de Caddy del servidor
+# (en el VPS, el Caddy vive en el compose de Agendia: /opt/atajolab/apps/agendia/deploy/sites/
+# y el Caddyfile principal ya hace `import sites/*.caddy`). No reemplaza ni reinicia otros sitios:
+# basta con recargar Caddy (`docker exec <caddy> caddy reload --config /etc/caddy/Caddyfile`).
+# Requisito: `presupuestos-app` debe estar en la red `agendia-edge` (PROXY_NETWORK).
 presupuestos.atajolab.dev {
 	encode zstd gzip
 	reverse_proxy presupuestos-app:3000 {
@@ -7,9 +10,7 @@ presupuestos.atajolab.dev {
 		health_interval 30s
 	}
 	log {
-		output file /var/log/caddy/presupuestos.log {
-			roll_size 10mb
-			roll_keep 5
-		}
+		output stdout
+		format console
 	}
 }

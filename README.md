@@ -24,7 +24,7 @@ Detalle de planes y permisos: [`docs/plans.md`](docs/plans.md).
 | Aplicación, tests, build | Implementado y probado |
 | Mercado Pago (Checkout Pro, suscripciones, webhooks) | Implementado y probado **con un doble del proveedor**. No validado con credenciales reales ni con cobros reales |
 | Resend | Implementado y probado con el SDK simulado. Sin credenciales no se envía nada |
-| Infraestructura (Docker, compose, scripts) | Imagen, migraciones, backup y restauración verificados en local. **No desplegado** en el VPS |
+| Infraestructura (Docker, compose, scripts) | Imagen, migraciones, backup, restauración y monitoreo verificados en local. **No desplegado** en el VPS (ver [checklist](docs/PRODUCTION_CHECKLIST.md)) |
 | Facturación electrónica (ARCA) | No implementada: los PDF son presupuestos comerciales sin validez fiscal |
 
 ## Desarrollo rápido
@@ -57,3 +57,6 @@ Guía completa: [`docs/development.md`](docs/development.md).
 - [Resend](docs/resend.md)
 - [Backups y restauración](docs/backups.md)
 - [Planes y permisos](docs/plans.md)
+- [Monitoreo](docs/monitoring.md)
+- [Retención de datos](docs/retention.md)
+- [Checklist de producción (estado real)](docs/PRODUCTION_CHECKLIST.md)
