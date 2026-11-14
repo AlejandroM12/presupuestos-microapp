@@ -99,4 +99,31 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Vulnerabilidades de producción (alta o crítica)
         run: pnpm audit --prod --audit-level high
-        continue-on-error: true
+
+  secrets:
+    name: Escaneo de secretos
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks (historial completo)
+        env:
+          GITLEAKS_VERSION: "8.28.0"
+        run: |
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar -xz gitleaks
+          ./gitleaks git --redact --no-banner --exit-code 1 .
+
+  deploy-config:
+    name: Validación de Docker Compose y scripts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compose de producción es válido
+        run: |
+          cp deploy/.env.production.example deploy/.env
+          docker compose -f deploy/docker-compose.yml config -q
+      - name: Sintaxis de scripts de despliegue
+        run: for f in deploy/scripts/*.sh; do bash -n "$f"; done
