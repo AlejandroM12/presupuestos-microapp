@@ -6,6 +6,7 @@ import type { GatewayPayment } from "@/integrations/mercadopago/gateway";
 import { FakeGateway } from "@/integrations/mercadopago/test-helpers";
 import { PRICING } from "@/lib/config/plans";
 import { db } from "@/server/db";
+import { deleteTestUsers } from "@/test/cleanup";
 import { loadAccessContext } from "./access";
 import {
   AlreadyOwnedError,
@@ -78,7 +79,7 @@ describe.skipIf(!enabled)("compra del Pack Premium (PostgreSQL + Mercado Pago si
   afterAll(async () => {
     setGateway(undefined);
     setMailer(null);
-    await db.user.deleteMany({ where: { email: { endsWith: DOMAIN } } });
+    await deleteTestUsers(DOMAIN);
   });
 
   it("crea la preferencia con el precio del servidor y registra el pago pendiente", async () => {

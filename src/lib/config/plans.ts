@@ -20,8 +20,14 @@ export const PRICING = {
 
 export const LIMITS = {
   freeMonthlyDownloads: 3,
-  /** Política de uso razonable para Pro (descargas por mes). */
-  proFairUseMonthlyDownloads: 500,
+  /**
+   * Política de uso razonable de Pro. Superar el umbral de revisión NO bloquea: solo se registra
+   * para revisar el caso. El tope técnico y el límite por hora existen contra abuso y
+   * automatización; están publicados en /legal/uso-razonable.
+   */
+  proReviewThresholdMonthly: 500,
+  proHardCeilingMonthly: 3000,
+  proBurstPerHour: 60,
 } as const;
 
 export type PlanId = "free" | "premium_pack" | "pro";
@@ -67,7 +73,7 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     name: "Pro",
     tagline: "Para quienes presupuestan todas las semanas",
     features: [
-      "Descargas ilimitadas (uso razonable)",
+      "Descargas sin límite mensual anunciado (sujeto a uso razonable)",
       "Todos los diseños incluidos",
       "Historial de presupuestos en la nube",
       "Gestión de clientes",

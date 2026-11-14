@@ -3,6 +3,7 @@ import { defaultQuote } from "@/domain/quote/defaults";
 import type { QuoteDraft } from "@/domain/quote/schema";
 import { hashPassword, verifyPassword } from "@/server/auth/password";
 import { db } from "@/server/db";
+import { deleteTestUsers } from "@/test/cleanup";
 import {
   changePassword,
   deleteAccount,
@@ -36,7 +37,10 @@ describe.skipIf(!enabled)("cuenta del usuario (PostgreSQL)", () => {
   });
 
   afterAll(async () => {
-    await db.user.deleteMany({ where: { email: { endsWith: DOMAIN } } });
+    await deleteTestUsers(DOMAIN);
+    await db.payment.deleteMany({
+      where: { externalReference: { startsWith: "ref-" }, userId: null },
+    });
   });
 
   it("actualiza el nombre", async () => {
@@ -78,7 +82,7 @@ describe.skipIf(!enabled)("cuenta del usuario (PostgreSQL)", () => {
     expect(json).not.toContain("De otro usuario");
   });
 
-  it("eliminar la cuenta exige la contraseña y borra todos sus datos", async () => {
+  it("eliminar la cuenta exige la contraseña, borra los datos personales y conserva los pagos anonimizados", async () => {
     const victim = await db.user.create({
       data: { email: `victim${DOMAIN}`, passwordHash: await hashPassword("borrame-ya-1") },
     });
@@ -109,12 +113,18 @@ describe.skipIf(!enabled)("cuenta del usuario (PostgreSQL)", () => {
     for (const count of [
       db.quote.count({ where: { userId: victim.id } }),
       db.customer.count({ where: { userId: victim.id } }),
-      db.payment.count({ where: { userId: victim.id } }),
       db.templatePurchase.count({ where: { userId: victim.id } }),
       db.downloadUsage.count({ where: { userId: victim.id } }),
     ]) {
       expect(await count).toBe(0);
     }
+    // el registro financiero se conserva, sin vínculo con la persona
+    const kept = await db.payment.findUniqueOrThrow({
+      where: { externalReference: `ref-${victim.id}` },
+    });
+    expect(kept.userId).toBeNull();
+    expect(kept.status).toBe("APPROVED");
+    expect(String(kept.amount)).toBe("9900");
     // los datos de otros usuarios no se tocan
     expect(await db.user.count({ where: { id: otherId } })).toBe(1);
   });

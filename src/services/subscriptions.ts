@@ -117,7 +117,7 @@ export async function applyRemoteSubscription(
         providerSubscriptionId: remote.id,
       },
     });
-    if (sub.currentPeriodEnd && sub.currentPeriodEnd > new Date()) {
+    if (sub.user && sub.currentPeriodEnd && sub.currentPeriodEnd > new Date()) {
       await sendMail(proCancelledEmail(sub.user.email, sub.currentPeriodEnd));
     }
     return "cancelled";
@@ -245,7 +245,9 @@ export async function applyRemoteSubscriptionPayment(
     throw error;
   }
 
-  if (result.outcome === "activated" && result.newEnd) {
+  if (!sub.user) {
+    // Cuenta eliminada: se concilia el estado pero no se envían correos.
+  } else if (result.outcome === "activated" && result.newEnd) {
     await sendMail(proActivatedEmail(sub.user.email, sub.plan, result.newEnd));
   } else if (result.outcome === "failed") {
     await sendMail(paymentFailedEmail(sub.user.email, sub.currentPeriodEnd));
@@ -272,7 +274,7 @@ export async function cancelUserSubscription(
     where: { id: sub.id },
     data: { status: "CANCELLED", canceledAt: now },
   });
-  if (sub.currentPeriodEnd && sub.currentPeriodEnd > now) {
+  if (sub.user && sub.currentPeriodEnd && sub.currentPeriodEnd > now) {
     await sendMail(proCancelledEmail(sub.user.email, sub.currentPeriodEnd));
   }
   return sub.currentPeriodEnd;

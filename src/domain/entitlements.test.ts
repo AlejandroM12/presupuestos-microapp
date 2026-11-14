@@ -38,20 +38,28 @@ describe("computeEntitlements", () => {
     const e = computeEntitlements(user({ proActive: true, downloadsThisMonth: 40 }));
     expect(e.templates).toHaveLength(6);
     expect(e.downloadLimit).toBeNull();
-    expect(e.downloadCap).toBe(LIMITS.proFairUseMonthlyDownloads);
+    expect(e.downloadCap).toBe(LIMITS.proHardCeilingMonthly);
     expect(e.cloudFeatures).toBe(true);
   });
 
-  it("Pro tiene un tope técnico de uso razonable", () => {
+  it("Pro sigue pudiendo descargar al superar el umbral de revisión", () => {
+    const ctx = user({
+      proActive: true,
+      downloadsThisMonth: LIMITS.proReviewThresholdMonthly + 50,
+    });
+    expect(decidePdfRender(ctx, { templateId: "minimalista", preview: false }).allowed).toBe(true);
+  });
+
+  it("Pro no se corta en el umbral de revisión, solo en el tope técnico", () => {
     const e = computeEntitlements(
-      user({ proActive: true, downloadsThisMonth: LIMITS.proFairUseMonthlyDownloads }),
+      user({ proActive: true, downloadsThisMonth: LIMITS.proHardCeilingMonthly }),
     );
     expect(e.downloadsRemaining).toBe(0);
     expect(
-      decidePdfRender(
-        user({ proActive: true, downloadsThisMonth: LIMITS.proFairUseMonthlyDownloads }),
-        { templateId: "minimalista", preview: false },
-      ),
+      decidePdfRender(user({ proActive: true, downloadsThisMonth: LIMITS.proHardCeilingMonthly }), {
+        templateId: "minimalista",
+        preview: false,
+      }),
     ).toEqual({ allowed: false, reason: "download_limit_reached" });
   });
 

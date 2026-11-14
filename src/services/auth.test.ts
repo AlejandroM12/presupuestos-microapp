@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { setMailer, type EmailMessage } from "@/integrations/email/mailer";
 import { verifyPassword } from "@/server/auth/password";
 import { db } from "@/server/db";
+import { deleteTestUsers } from "@/test/cleanup";
 import {
   EmailTakenError,
   hashToken,
@@ -32,7 +33,7 @@ describe.skipIf(!enabled)("servicios de autenticación (PostgreSQL)", () => {
 
   afterEach(async () => {
     setMailer(null);
-    await db.user.deleteMany({ where: { email: { endsWith: DOMAIN } } });
+    await deleteTestUsers(DOMAIN);
   });
 
   it("registra usuarios con contraseña hasheada", async () => {

@@ -3,6 +3,7 @@ import { ANONYMOUS, computeEntitlements } from "@/domain/entitlements";
 import { defaultQuote } from "@/domain/quote/defaults";
 import type { QuoteDraft } from "@/domain/quote/schema";
 import { db } from "@/server/db";
+import { deleteTestUsers } from "@/test/cleanup";
 import {
   DownloadLimitError,
   loadAccessContext,
@@ -75,7 +76,7 @@ describe.skipIf(!enabled)("persistencia de presupuestos (PostgreSQL)", () => {
   });
 
   afterAll(async () => {
-    await db.user.deleteMany({ where: { email: { endsWith: DOMAIN } } });
+    await deleteTestUsers(DOMAIN);
   });
 
   it("guarda importes con precisión decimal y recupera el borrador sin pérdida", async () => {
@@ -243,7 +244,7 @@ describe.skipIf(!enabled)("contexto de acceso (PostgreSQL)", () => {
     userId = (await db.user.create({ data: { email: `acc${DOMAIN}`, passwordHash: "x" } })).id;
   });
   afterAll(async () => {
-    await db.user.deleteMany({ where: { email: { endsWith: DOMAIN } } });
+    await deleteTestUsers(DOMAIN);
   });
 
   it("un usuario nuevo está en el plan gratuito", async () => {
@@ -307,7 +308,7 @@ describe.skipIf(!enabled)("límite de descargas (PostgreSQL)", () => {
     userId = (await db.user.create({ data: { email: `dl${DOMAIN}`, passwordHash: "x" } })).id;
   });
   afterAll(async () => {
-    await db.user.deleteMany({ where: { email: { endsWith: DOMAIN } } });
+    await deleteTestUsers(DOMAIN);
   });
 
   it("con solicitudes simultáneas nunca supera el tope", async () => {
@@ -334,5 +335,22 @@ describe.skipIf(!enabled)("límite de descargas (PostgreSQL)", () => {
     const july = new Date("2026-07-01T00:00:01Z");
     expect((await loadAccessContext(userId, july)).downloadsThisMonth).toBe(0);
     await expect(reserveDownload(userId, "minimalista", 3, july)).resolves.toBeTypeOf("string");
+  });
+});
+
+describe("límite por hora (ráfagas)", () => {
+  let userId: string;
+  beforeAll(async () => {
+    userId = (await db.user.create({ data: { email: `burst${DOMAIN}`, passwordHash: "x" } })).id;
+  });
+  afterAll(async () => {
+    await deleteTestUsers(DOMAIN);
+  });
+
+  it("bloquea al superar el límite horario aunque el tope mensual no se alcance", async () => {
+    for (let i = 0; i < 3; i++) await reserveDownload(userId, "minimalista", 100, new Date(), 3);
+    await expect(reserveDownload(userId, "minimalista", 100, new Date(), 3)).rejects.toMatchObject({
+      kind: "burst",
+    });
   });
 });

@@ -101,7 +101,7 @@ export async function applyRemotePayment(
         where: { id: row.id },
         data: { providerPaymentId: remote.id, status, providerStatus: remote.status },
       });
-      if (status === "APPROVED") {
+      if (status === "APPROVED" && row.userId) {
         const created = await tx.templatePurchase.createMany({
           data: { userId: row.userId, product: PREMIUM_PACK, paymentId: row.id },
           skipDuplicates: true,
@@ -119,7 +119,7 @@ export async function applyRemotePayment(
     throw error;
   }
 
-  if (granted) {
+  if (granted && row.userId) {
     const user = await db.user.findUnique({ where: { id: row.userId }, select: { email: true } });
     if (user) {
       await getMailer()

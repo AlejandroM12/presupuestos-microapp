@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { siteConfig } from "@/lib/config/site";
 import { Logo } from "./logo";
 
@@ -24,6 +25,17 @@ export function SiteFooter() {
           <a href="#preguntas" className="hover:text-foreground">
             Preguntas
           </a>
+        </nav>
+        <nav aria-label="Legal" className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
+          <Link href="/legal/terminos" className="hover:text-foreground">
+            Términos
+          </Link>
+          <Link href="/legal/privacidad" className="hover:text-foreground">
+            Privacidad
+          </Link>
+          <Link href="/legal/uso-razonable" className="hover:text-foreground">
+            Uso razonable
+          </Link>
         </nav>
         <p className="text-xs">© {new Date().getFullYear()} AtajoLab</p>
       </div>

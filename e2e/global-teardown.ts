@@ -7,6 +7,10 @@ export default async function globalTeardown() {
   const client = new Client({ connectionString: url });
   await client.connect();
   try {
+    const owned = `"userId" IN (SELECT id FROM users WHERE email LIKE '%@e2e.example')`;
+    await client.query(`DELETE FROM template_purchases WHERE ${owned}`);
+    await client.query(`DELETE FROM payments WHERE ${owned}`);
+    await client.query(`DELETE FROM subscriptions WHERE ${owned}`);
     await client.query(`DELETE FROM users WHERE email LIKE '%@e2e.example'`);
   } finally {
     await client.end();

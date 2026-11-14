@@ -33,7 +33,8 @@ enum PaymentStatus {
 
 model Payment {
   id                String        @id @default(uuid()) @db.Uuid
-  userId            String        @db.Uuid
+  /// Nulo cuando la cuenta fue eliminada: el registro se conserva anonimizado (conciliación/contabilidad).
+  userId            String?       @db.Uuid
   kind              PaymentKind
   provider          String        @default("mercadopago")
   /// Referencia que enviamos al proveedor para conciliar (única por intento de pago).
@@ -47,7 +48,7 @@ model Payment {
   createdAt         DateTime      @default(now()) @db.Timestamptz(3)
   updatedAt         DateTime      @updatedAt @db.Timestamptz(3)
 
-  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
   subscription Subscription?     @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
   purchase     TemplatePurchase?
 
@@ -86,7 +87,8 @@ enum SubscriptionStatus {
 
 model Subscription {
   id                     String             @id @default(uuid()) @db.Uuid
-  userId                 String             @db.Uuid
+  /// Nulo cuando la cuenta fue eliminada (registro conservado, anonimizado).
+  userId                 String?            @db.Uuid
   plan                   SubscriptionPlan
   status                 SubscriptionStatus @default(PENDING)
   provider               String             @default("mercadopago")
@@ -99,7 +101,7 @@ model Subscription {
   createdAt              DateTime           @default(now()) @db.Timestamptz(3)
   updatedAt              DateTime           @updatedAt @db.Timestamptz(3)
 
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   payments Payment[]
 
   @@unique([provider, providerSubscriptionId])

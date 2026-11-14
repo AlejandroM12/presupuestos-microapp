@@ -50,8 +50,10 @@ export async function changePassword(userId: string, current: string, next: unkn
 }
 
 /**
- * Elimina la cuenta y todos sus datos. Antes intenta cancelar las suscripciones en Mercado Pago
- * para que no se sigan cobrando renovaciones.
+ * Elimina la cuenta y sus datos personales (perfil, clientes, presupuestos, sesiones, uso).
+ * Los registros de pagos y suscripciones se CONSERVAN anonimizados (userId = null) para
+ * conciliación y obligaciones contables; ver docs/retention.md. Antes intenta cancelar las
+ * suscripciones en Mercado Pago para que no se sigan cobrando renovaciones.
  */
 export async function deleteAccount(userId: string, password: string) {
   await verifyCurrent(userId, password);
@@ -74,8 +76,12 @@ export async function deleteAccount(userId: string, password: string) {
   }
 
   await db.$transaction([
+    // La compra (beneficio) se borra; el Payment que la originó queda anonimizado por SetNull.
     db.templatePurchase.deleteMany({ where: { userId } }),
-    db.payment.deleteMany({ where: { userId } }),
+    db.subscription.updateMany({
+      where: { userId, status: { in: ["ACTIVE", "PAST_DUE", "PENDING"] } },
+      data: { status: "CANCELLED", canceledAt: new Date() },
+    }),
     db.user.delete({ where: { id: userId } }),
   ]);
 }

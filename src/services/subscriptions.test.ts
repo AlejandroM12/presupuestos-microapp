@@ -6,6 +6,7 @@ import type { GatewayPayment, GatewaySubscription } from "@/integrations/mercado
 import { FakeGateway } from "@/integrations/mercadopago/test-helpers";
 import { PRICING } from "@/lib/config/plans";
 import { db } from "@/server/db";
+import { deleteTestUsers } from "@/test/cleanup";
 import { loadAccessContext } from "./access";
 import { handleWebhookNotification, SuspiciousPaymentError } from "./billing";
 import { NotFoundError } from "./quotes";
@@ -95,7 +96,7 @@ describe.skipIf(!enabled)("suscripciones Pro (PostgreSQL + Mercado Pago simulado
   afterAll(async () => {
     setGateway(undefined);
     setMailer(null);
-    await db.user.deleteMany({ where: { email: { endsWith: DOMAIN } } });
+    await deleteTestUsers(DOMAIN);
   });
 
   it("crea la suscripción mensual y anual con el precio y la frecuencia del servidor", async () => {

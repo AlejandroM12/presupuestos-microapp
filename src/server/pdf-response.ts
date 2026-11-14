@@ -5,9 +5,11 @@ import {
   DENIAL_MESSAGES,
   DENIAL_STATUS,
   decidePdfRender,
+  BURST_MESSAGE,
   FAIR_USE_MESSAGE,
 } from "@/domain/entitlements";
 import type { Quote } from "@/domain/quote/schema";
+import { LIMITS } from "@/lib/config/plans";
 import { getAccessContext } from "@/server/access";
 import { DownloadLimitError, releaseDownload, reserveDownload } from "@/services/access";
 import { pdfFileName } from "@/services/pdf/model";
@@ -42,17 +44,29 @@ export async function issueQuotePdf(quote: Quote, preview: boolean): Promise<Res
         userId,
         quote.templateId,
         computeEntitlements(access).downloadCap,
+        new Date(),
+        access.proActive ? LIMITS.proBurstPerHour : undefined,
       );
     } catch (err) {
       if (err instanceof DownloadLimitError) {
-        const message = access.proActive
-          ? FAIR_USE_MESSAGE
-          : DENIAL_MESSAGES.download_limit_reached;
+        const message =
+          err.kind === "burst"
+            ? BURST_MESSAGE
+            : access.proActive
+              ? FAIR_USE_MESSAGE
+              : DENIAL_MESSAGES.download_limit_reached;
         return pdfError(429, message, undefined, "download_limit_reached");
       }
       console.error("download_reserve_failed", err instanceof Error ? err.message : "unknown");
       return pdfError(500, "No pudimos preparar la descarga. Intentá nuevamente.");
     }
+  }
+
+  if (access.proActive && access.downloadsThisMonth + 1 === LIMITS.proReviewThresholdMonthly) {
+    console.warn(
+      "pro_review_threshold_reached",
+      JSON.stringify({ userId: (await auth())?.user?.id }),
+    );
   }
 
   try {

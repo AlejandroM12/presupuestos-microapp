@@ -41,7 +41,7 @@ export function computeEntitlements(ctx: AccessContext): Entitlements {
   const premiumUnlocked = ctx.proActive || ctx.ownsPremiumPack;
   const unlimited = ctx.proActive;
   const limit = LIMITS.freeMonthlyDownloads;
-  const cap = unlimited ? LIMITS.proFairUseMonthlyDownloads : limit;
+  const cap = unlimited ? LIMITS.proHardCeilingMonthly : limit;
 
   return {
     authenticated: ctx.authenticated,
@@ -96,7 +96,10 @@ export function decidePdfRender(ctx: AccessContext, opts: DecideOptions): Render
 }
 
 export const FAIR_USE_MESSAGE =
-  "Alcanzaste el límite de uso razonable de este mes. Escribinos si necesitás más volumen.";
+  "Alcanzaste el tope técnico de uso razonable de este mes. Escribinos si necesitás más volumen.";
+
+export const BURST_MESSAGE =
+  "Generaste muchos PDF en la última hora. Esperá unos minutos e intentá de nuevo.";
 
 export const DENIAL_MESSAGES: Record<DenialReason, string> = {
   unknown_template: "El diseño elegido no existe.",
