@@ -33,3 +33,14 @@
 - [ ] Confirmar que llegan los webhooks firmados al VPS (ver logs `webhook_*`).
 - [ ] Verificar el campo que informa Mercado Pago como referencia en los cobros recurrentes (la lógica asume que repite el `external_reference` de la suscripción) y ajustar `services/subscriptions.ts` si difiere.
 - [ ] Cambiar a credenciales de producción y repetir con un pago real de bajo importe.
+
+## Hallazgos de la documentación oficial (sin validar en sandbox)
+
+Revisado el 2026-11-13 en la documentación de Mercado Pago (suscripciones sin plan asociado, `authorized_payments`):
+
+- Las cuotas de una suscripción son recursos `authorized_payments` con `preapproval_id`, `external_reference`, `debit_date`, `retry_attempt` y un objeto `payment` anidado.
+- Hay un tema de webhook propio, `subscription_authorized_payment`, además de `subscription_preapproval` y `payments`. **Hoy la app solo procesa `payment` y `subscription_preapproval`**; los eventos de `subscription_authorized_payment` se persisten pero no se procesan. Los cobros recurrentes se vinculan hoy por `external_reference`/`metadata.preapproval_id` del pago: **supuesto sin confirmar**. Si en sandbox el pago de la renovación no trae esa referencia, hay que consultar `authorized_payments/{id}` y vincular por `preapproval_id`.
+- Reintentos del proveedor: una cuota rechazada entra en `recycling` con hasta 4 reintentos; tras 3 rechazos la suscripción se cancela y se notifica. La app trata el rechazo como `PAST_DUE` y mantiene el acceso hasta el fin del período ya pagado; la cancelación final llega por `subscription_preapproval`.
+- Al alta, Mercado Pago valida la tarjeta con un cargo pequeño y la primera cuota se cobra aproximadamente una hora después: Pro **no** se activa de inmediato en el alta, solo con el primer cobro aprobado.
+
+Antes de cobrar: habilitar también el tema `subscription_authorized_payment` en el panel y confirmar en sandbox el cuerpo real de cada notificación.
