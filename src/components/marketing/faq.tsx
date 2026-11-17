@@ -37,6 +37,26 @@ export const FAQ_ITEMS = [
     q: "¿Cómo envío el presupuesto a mi cliente?",
     a: "Descargás el PDF y lo compartís desde tu dispositivo. También armamos un mensaje listo para WhatsApp; el archivo lo adjuntás vos.",
   },
+  {
+    q: "¿Puedo solicitar una plantilla adaptada a mi profesión?",
+    a: "Sí. Podemos desarrollar una plantilla personalizada con los campos, estilos y secciones que necesite tu actividad.",
+  },
+  {
+    q: "¿Necesito contratar Pro para utilizar una plantilla personalizada?",
+    a: "No. Las plantillas personalizadas pueden contratarse independientemente del plan que tengas. Los límites de descarga dependen de tu plan.",
+  },
+  {
+    q: "¿Cuánto cuesta una plantilla personalizada?",
+    a: "El precio depende del diseño y de las funcionalidades que necesites. Contactanos para evaluar tu solicitud y preparar un presupuesto.",
+  },
+  {
+    q: "¿La plantilla estará disponible para otros usuarios?",
+    a: "Las plantillas privadas se asignan exclusivamente a las cuentas autorizadas.",
+  },
+  {
+    q: "¿Tengo que pagar todos los meses por mi plantilla personalizada?",
+    a: "No. El diseño personalizado se contrata mediante un pago único, según las condiciones acordadas. Las funcionalidades adicionales de los planes mantienen sus propias condiciones.",
+  },
 ];
 
 export function Faq() {

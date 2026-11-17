@@ -6,6 +6,7 @@ const links = [
   { href: "#como-funciona", label: "Cómo funciona" },
   { href: "#plantillas", label: "Plantillas" },
   { href: "#precios", label: "Precios" },
+  { href: "#plantillas-personalizadas", label: "A medida" },
   { href: "#preguntas", label: "Preguntas" },
 ];
 

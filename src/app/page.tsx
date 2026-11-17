@@ -1,5 +1,6 @@
 import { Audience } from "@/components/marketing/audience";
 import { Benefits } from "@/components/marketing/benefits";
+import { CustomTemplates } from "@/components/marketing/custom-templates";
 import { Faq, FAQ_ITEMS } from "@/components/marketing/faq";
 import { FinalCta } from "@/components/marketing/final-cta";
 import { Hero } from "@/components/marketing/hero";
@@ -43,6 +44,7 @@ export default function Home() {
         <TemplatesShowcase />
         <Audience />
         <Pricing />
+        <CustomTemplates />
         <Faq />
         <FinalCta />
       </main>
