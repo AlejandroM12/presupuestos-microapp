@@ -162,3 +162,22 @@ export function termsBlocks(m: PdfModel): { label: string; text: string }[] {
     { label: "Condiciones comerciales", text: q.terms },
   ].filter((b) => b.text);
 }
+
+/**
+ * Parte las filas en bloques con encabezado propio.
+ * Evita `fixed` en el thead: ese prop lo repite también en páginas que solo tienen
+ * totales o condiciones (encabezado huérfano). Cada bloque es atómico (`wrap={false}`).
+ */
+export function tableRowChunks<T>(
+  rows: T[],
+  opts: { firstPage?: number; otherPages?: number } = {},
+): T[][] {
+  const firstPage = opts.firstPage ?? 4;
+  const otherPages = opts.otherPages ?? 6;
+  if (rows.length === 0) return [];
+  const chunks: T[][] = [rows.slice(0, firstPage)];
+  for (let i = firstPage; i < rows.length; i += otherPages) {
+    chunks.push(rows.slice(i, i + otherPages));
+  }
+  return chunks;
+}

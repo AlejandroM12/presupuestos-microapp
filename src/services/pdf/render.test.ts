@@ -115,6 +115,12 @@ describe.each(TEMPLATES.map((t) => t.id))("plantilla %s", (templateId) => {
     for (const n of [1, 30, 60]) expect(all).toContain(`Concepto número ${n} `);
     // el bloque de totales no se parte ni se repite entre páginas
     expect(pages.filter((p) => /subtotal/i.test(p))).toHaveLength(1);
+    // no dejar encabezado de tabla huérfano (sin filas ni totales) en páginas de cierre
+    for (const text of pages) {
+      if (/descripci[oó]n/i.test(text) && /importe/i.test(text)) {
+        expect(/Concepto número|Subtotal|TOTAL/i.test(text)).toBe(true);
+      }
+    }
   });
 
   it("agrega marca de agua solo en la vista previa", async () => {
@@ -173,20 +179,87 @@ describe("pdfFileName", () => {
 
 // Utilidad de desarrollo: PDF_DUMP_DIR=<carpeta> pnpm test pdf escribe un PDF por plantilla.
 describe.runIf(process.env.PDF_DUMP_DIR)("volcado de PDFs de muestra", () => {
-  it("escribe los PDFs", async () => {
-    const { mkdirSync, writeFileSync } = await import("node:fs");
-    const { TEMPLATES } = await import("@/domain/templates");
-    const { hasTemplateComponent } = await import("./render");
-    mkdirSync(process.env.PDF_DUMP_DIR!, { recursive: true });
-    for (const t of TEMPLATES.filter((t) => hasTemplateComponent(t.id))) {
-      for (const n of [3, 40]) {
-        const pdf = await renderQuotePdf(sampleQuote(n), {
+  it(
+    "escribe los PDFs",
+    async () => {
+      const { mkdirSync, writeFileSync } = await import("node:fs");
+      const { TEMPLATES } = await import("@/domain/templates");
+      const { hasTemplateComponent } = await import("./render");
+      mkdirSync(process.env.PDF_DUMP_DIR!, { recursive: true });
+      const logo =
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+      const longTerms =
+        "Condiciones comerciales extensas para validar paginación: ".repeat(12) +
+        "Los precios no incluyen materiales extraordinarios ni demoliciones. " +
+        "La validez del presupuesto es la indicada en el encabezado. " +
+        "Cualquier modificación de alcance se cotizará por separado.";
+      for (const t of TEMPLATES.filter((t) => hasTemplateComponent(t.id))) {
+        for (const n of [3, 40]) {
+          const pdf = await renderQuotePdf(sampleQuote(n), {
+            templateId: t.id,
+            showBrand: t.tier === "free",
+            allowCustomColor: false,
+          });
+          writeFileSync(`${process.env.PDF_DUMP_DIR}/${t.id}-${n}.pdf`, pdf);
+        }
+        const stress = sampleQuote(50, {
+          currency: "USD",
+          terms: longTerms,
+          notes:
+            "Nota larga con descuentos e impuestos aplicados en los conceptos y en el pie. ".repeat(
+              4,
+            ),
+          surcharges: [{ id: "rec", label: "Recargo administrativo", type: "percent", value: "5" }],
+        });
+        stress.issuer.logo = logo;
+        stress.items = stress.items.map((item, i) => ({
+          ...item,
+          description:
+            `${item.description}. Detalle adicional muy extenso del alcance del ítem ${i + 1}: ` +
+            "incluye mano de obra, coordinación en obra y limpieza parcial del sector intervenido.",
+          discountPercent: i % 4 === 0 ? "15" : item.discountPercent,
+        }));
+        const pdf = await renderQuotePdf(stress, {
           templateId: t.id,
           showBrand: t.tier === "free",
           allowCustomColor: false,
         });
-        writeFileSync(`${process.env.PDF_DUMP_DIR}/${t.id}-${n}.pdf`, pdf);
+        writeFileSync(`${process.env.PDF_DUMP_DIR}/${t.id}-stress50.pdf`, pdf);
       }
-    }
-  });
+    },
+    60_000,
+  );
+});
+
+describe("estrés de paginación (50 conceptos, textos largos, USD)", () => {
+  it.each(TEMPLATES.map((t) => t.id))(
+    "plantilla %s no pierde conceptos ni duplica totales",
+    async (templateId) => {
+      const q = sampleQuote(50, {
+        currency: "USD",
+        terms: "Condición comercial muy larga. ".repeat(40),
+        notes: "Observación extendida. ".repeat(20),
+        surcharges: [{ id: "r", label: "Recargo", type: "fixed", value: "100" }],
+      });
+      q.issuer.logo =
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+      q.items = q.items.map((item, i) => ({
+        ...item,
+        description: `${item.description}. Alcance detallado del concepto ${i + 1} con texto adicional para forzar saltos de línea en el PDF.`,
+      }));
+      const pages = await extractPdfPages(
+        await renderQuotePdf(q, {
+          templateId,
+          showBrand: templateId === "minimalista",
+          allowCustomColor: false,
+        }),
+      );
+      expect(pages.length).toBeGreaterThan(1);
+      const all = pages.join(" ");
+      for (const n of [1, 25, 50]) expect(all).toContain(`Concepto número ${n}`);
+      expect(pages.filter((p) => /subtotal/i.test(p))).toHaveLength(1);
+      expect(all).toMatch(/USD|U\$S|US\$/);
+      pages.forEach((text, i) => expect(text).toContain(`Página ${i + 1} de ${pages.length}`));
+    },
+  );
 });

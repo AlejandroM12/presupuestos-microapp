@@ -9,6 +9,7 @@ import {
   PageFooter,
   PreviewMark,
   readableOn,
+  tableRowChunks,
   termsBlocks,
   tint,
 } from "../common";
@@ -212,20 +213,24 @@ export function ComercialDocument({ m }: { m: PdfModel }) {
         <Text style={s.title}>{q.title}</Text>
         {q.description ? <Text style={s.description}>{q.description}</Text> : null}
 
-        <View style={s.thead} fixed>
-          <Text style={[s.th, s.cDesc]}>Descripción</Text>
-          <Text style={[s.th, s.cQty]}>Cantidad</Text>
-          <Text style={[s.th, s.cPrice]}>Precio</Text>
-          <Text style={[s.th, s.cDisc]}>Dto.</Text>
-          <Text style={[s.th, s.cAmount]}>Importe</Text>
-        </View>
-        {m.rows.map((r, i) => (
-          <View key={i} style={s.row} wrap={false}>
-            <Text style={s.cDesc}>{r.description}</Text>
-            <Text style={s.cQty}>{r.quantity}</Text>
-            <Text style={s.cPrice}>{r.unitPrice}</Text>
-            <Text style={s.cDisc}>{r.discount}</Text>
-            <Text style={[s.cAmount, { fontWeight: 600 }]}>{r.amount}</Text>
+        {tableRowChunks(m.rows, { firstPage: 3, otherPages: 5 }).map((chunk, chunkIndex) => (
+          <View key={chunkIndex} wrap={false}>
+            <View style={s.thead}>
+              <Text style={[s.th, s.cDesc]}>Descripción</Text>
+              <Text style={[s.th, s.cQty]}>Cantidad</Text>
+              <Text style={[s.th, s.cPrice]}>Precio</Text>
+              <Text style={[s.th, s.cDisc]}>Dto.</Text>
+              <Text style={[s.th, s.cAmount]}>Importe</Text>
+            </View>
+            {chunk.map((r, i) => (
+              <View key={i} style={s.row}>
+                <Text style={s.cDesc}>{r.description}</Text>
+                <Text style={s.cQty}>{r.quantity}</Text>
+                <Text style={s.cPrice}>{r.unitPrice}</Text>
+                <Text style={s.cDisc}>{r.discount}</Text>
+                <Text style={[s.cAmount, { fontWeight: 600 }]}>{r.amount}</Text>
+              </View>
+            ))}
           </View>
         ))}
 
@@ -256,6 +261,14 @@ export function ComercialDocument({ m }: { m: PdfModel }) {
             <Text style={s.grandText}>Total {m.currency}</Text>
             <Text style={s.grandText}>{m.money(m.totals.total)}</Text>
           </View>
+          <View style={s.cta}>
+            <Text style={{ fontWeight: 600 }}>¿Te interesa esta propuesta?</Text>
+            <Text style={s.muted}>
+              Para aceptarla o hacer consultas, contactá a{" "}
+              {q.issuer.professionalName || q.issuer.businessName}
+              {contactLine(m) ? `: ${contactLine(m)}` : "."}
+            </Text>
+          </View>
         </View>
 
         <View style={{ marginTop: 14 }}>
@@ -270,15 +283,6 @@ export function ComercialDocument({ m }: { m: PdfModel }) {
                 textStyle={s.noteText}
               />
             ))}
-        </View>
-
-        <View style={s.cta} wrap={false}>
-          <Text style={{ fontWeight: 600 }}>¿Te interesa esta propuesta?</Text>
-          <Text style={s.muted}>
-            Para aceptarla o hacer consultas, contactá a{" "}
-            {q.issuer.professionalName || q.issuer.businessName}
-            {contactLine(m) ? `: ${contactLine(m)}` : "."}
-          </Text>
         </View>
 
         <PageFooter m={m} />

@@ -6,6 +6,7 @@ import {
   PageFooter,
   PreviewMark,
   readableOn,
+  tableRowChunks,
   termsBlocks,
   tint,
 } from "../common";
@@ -174,27 +175,33 @@ export function ModernoDocument({ m }: { m: PdfModel }) {
         <Text style={s.title}>{q.title}</Text>
         {q.description ? <Text style={s.description}>{q.description}</Text> : null}
 
-        <View style={s.thead} fixed>
-          <Text style={[s.th, s.cDesc]}>Descripción</Text>
-          <Text style={[s.th, s.cQty]}>Cant.</Text>
-          <Text style={[s.th, s.cPrice]}>Precio</Text>
-          <Text style={[s.th, s.cAmount]}>Importe</Text>
-        </View>
-        {m.rows.map((r, i) => (
-          <View
-            key={i}
-            style={[s.row, { backgroundColor: i % 2 === 0 ? soft : "#ffffff" }]}
-            wrap={false}
-          >
-            <View style={s.cDesc}>
-              <Text>{r.description}</Text>
-              {r.discount !== "—" ? (
-                <Text style={{ fontSize: 7.5, color: accent }}>Descuento {r.discount}</Text>
-              ) : null}
+        {tableRowChunks(m.rows.map((r, i) => ({ r, i })), {
+          firstPage: 3,
+          otherPages: 5,
+        }).map((chunk, chunkIndex) => (
+          <View key={chunkIndex} wrap={false}>
+            <View style={s.thead}>
+              <Text style={[s.th, s.cDesc]}>Descripción</Text>
+              <Text style={[s.th, s.cQty]}>Cant.</Text>
+              <Text style={[s.th, s.cPrice]}>Precio</Text>
+              <Text style={[s.th, s.cAmount]}>Importe</Text>
             </View>
-            <Text style={s.cQty}>{r.quantity}</Text>
-            <Text style={s.cPrice}>{r.unitPrice}</Text>
-            <Text style={[s.cAmount, { fontWeight: 600 }]}>{r.amount}</Text>
+            {chunk.map(({ r, i }) => (
+              <View
+                key={i}
+                style={[s.row, { backgroundColor: i % 2 === 0 ? soft : "#ffffff" }]}
+              >
+                <View style={s.cDesc}>
+                  <Text>{r.description}</Text>
+                  {r.discount !== "—" ? (
+                    <Text style={{ fontSize: 7.5, color: accent }}>Descuento {r.discount}</Text>
+                  ) : null}
+                </View>
+                <Text style={s.cQty}>{r.quantity}</Text>
+                <Text style={s.cPrice}>{r.unitPrice}</Text>
+                <Text style={[s.cAmount, { fontWeight: 600 }]}>{r.amount}</Text>
+              </View>
+            ))}
           </View>
         ))}
 

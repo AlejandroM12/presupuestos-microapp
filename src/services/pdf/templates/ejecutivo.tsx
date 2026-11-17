@@ -8,6 +8,7 @@ import {
   PageFooter,
   PreviewMark,
   readableOn,
+  tableRowChunks,
   termsBlocks,
   tint,
 } from "../common";
@@ -177,20 +178,24 @@ export function EjecutivoDocument({ m }: { m: PdfModel }) {
         <Text style={s.title}>{q.title}</Text>
         {q.description ? <Text style={s.description}>{q.description}</Text> : null}
 
-        <View style={s.thead} fixed>
-          <Text style={[s.th, s.cDesc]}>Descripción</Text>
-          <Text style={[s.th, s.cQty]}>Cantidad</Text>
-          <Text style={[s.th, s.cPrice]}>Precio</Text>
-          <Text style={[s.th, s.cDisc]}>Dto.</Text>
-          <Text style={[s.th, s.cAmount]}>Importe</Text>
-        </View>
-        {m.rows.map((r, i) => (
-          <View key={i} style={s.row} wrap={false}>
-            <Text style={s.cDesc}>{r.description}</Text>
-            <Text style={s.cQty}>{r.quantity}</Text>
-            <Text style={s.cPrice}>{r.unitPrice}</Text>
-            <Text style={s.cDisc}>{r.discount}</Text>
-            <Text style={[s.cAmount, { fontWeight: 600 }]}>{r.amount}</Text>
+        {tableRowChunks(m.rows).map((chunk, chunkIndex) => (
+          <View key={chunkIndex} wrap={false}>
+            <View style={s.thead}>
+              <Text style={[s.th, s.cDesc]}>Descripción</Text>
+              <Text style={[s.th, s.cQty]}>Cantidad</Text>
+              <Text style={[s.th, s.cPrice]}>Precio</Text>
+              <Text style={[s.th, s.cDisc]}>Dto.</Text>
+              <Text style={[s.th, s.cAmount]}>Importe</Text>
+            </View>
+            {chunk.map((r, i) => (
+              <View key={i} style={s.row}>
+                <Text style={s.cDesc}>{r.description}</Text>
+                <Text style={s.cQty}>{r.quantity}</Text>
+                <Text style={s.cPrice}>{r.unitPrice}</Text>
+                <Text style={s.cDisc}>{r.discount}</Text>
+                <Text style={[s.cAmount, { fontWeight: 600 }]}>{r.amount}</Text>
+              </View>
+            ))}
           </View>
         ))}
 

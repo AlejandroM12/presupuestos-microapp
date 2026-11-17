@@ -8,6 +8,7 @@ import {
   PageFooter,
   PreviewMark,
   readableOn,
+  tableRowChunks,
   termsBlocks,
   tint,
 } from "../common";
@@ -178,24 +179,28 @@ export function TecnicoDocument({ m }: { m: PdfModel }) {
           ) : null}
         </View>
 
-        <View style={s.thead} fixed>
-          <Text style={[s.th, s.cIdx]}>It.</Text>
-          <Text style={[s.th, s.cDesc, { fontFamily: "JetBrains", fontSize: 6.5 }]}>
-            Descripción
-          </Text>
-          <Text style={[s.th, s.cQty]}>Cantidad</Text>
-          <Text style={[s.th, s.cPrice]}>P. unit.</Text>
-          <Text style={[s.th, s.cDisc]}>Dto</Text>
-          <Text style={[s.th, s.cAmount]}>Importe</Text>
-        </View>
-        {m.rows.map((r, i) => (
-          <View key={i} style={s.row} wrap={false}>
-            <Text style={[s.td, s.cIdx]}>{String(i + 1).padStart(2, "0")}</Text>
-            <Text style={[s.td, s.cDesc]}>{r.description}</Text>
-            <Text style={[s.td, s.cQty]}>{r.quantity}</Text>
-            <Text style={[s.td, s.cPrice]}>{r.unitPrice}</Text>
-            <Text style={[s.td, s.cDisc]}>{r.discount}</Text>
-            <Text style={[s.td, s.cAmount, { fontWeight: 700 }]}>{r.amount}</Text>
+        {tableRowChunks(m.rows.map((r, i) => ({ r, i }))).map((chunk, chunkIndex) => (
+          <View key={chunkIndex} wrap={false}>
+            <View style={s.thead}>
+              <Text style={[s.th, s.cIdx]}>It.</Text>
+              <Text style={[s.th, s.cDesc, { fontFamily: "JetBrains", fontSize: 6.5 }]}>
+                Descripción
+              </Text>
+              <Text style={[s.th, s.cQty]}>Cantidad</Text>
+              <Text style={[s.th, s.cPrice]}>P. unit.</Text>
+              <Text style={[s.th, s.cDisc]}>Dto</Text>
+              <Text style={[s.th, s.cAmount]}>Importe</Text>
+            </View>
+            {chunk.map(({ r, i }) => (
+              <View key={i} style={s.row}>
+                <Text style={[s.td, s.cIdx]}>{String(i + 1).padStart(2, "0")}</Text>
+                <Text style={[s.td, s.cDesc]}>{r.description}</Text>
+                <Text style={[s.td, s.cQty]}>{r.quantity}</Text>
+                <Text style={[s.td, s.cPrice]}>{r.unitPrice}</Text>
+                <Text style={[s.td, s.cDisc]}>{r.discount}</Text>
+                <Text style={[s.td, s.cAmount, { fontWeight: 700 }]}>{r.amount}</Text>
+              </View>
+            ))}
           </View>
         ))}
 
