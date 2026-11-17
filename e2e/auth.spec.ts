@@ -9,12 +9,23 @@ async function signOut(page: Page) {
   await expect(page).toHaveURL(/\/$/);
 }
 
-async function register(page: Page, email: string, next?: string) {
+async function register(
+  page: Page,
+  email: string,
+  next?: string,
+  opts: { waitForLeave?: boolean } = {},
+) {
+  const waitForLeave = opts.waitForLeave ?? true;
   await page.goto(`/registro${next ? `?next=${encodeURIComponent(next)}` : ""}`);
   await page.getByLabel("Nombre (opcional)").fill("Laura E2E");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Contraseña").fill(PASSWORD);
   await page.getByRole("button", { name: "Crear cuenta" }).click();
+  // Sin esperar, asserts de URL/contenido compiten con el redirect post-registro.
+  // En errores (email duplicado) hay que desactivar waitForLeave.
+  if (waitForLeave) {
+    await page.waitForURL((url) => !url.pathname.startsWith("/registro"), { timeout: 15_000 });
+  }
 }
 
 test.describe("cuentas de usuario", () => {
@@ -54,7 +65,7 @@ test.describe("cuentas de usuario", () => {
     const email = unique("dup");
     await register(page, email, "/dashboard");
     await signOut(page);
-    await register(page, email);
+    await register(page, email, undefined, { waitForLeave: false });
     await expect(page.getByText("Ya existe una cuenta con ese email")).toBeVisible();
   });
 
@@ -69,7 +80,8 @@ test.describe("cuentas de usuario", () => {
 
   test("ignora destinos externos en el parámetro next", async ({ page }) => {
     await register(page, unique("next"), "https://evil.example/robar");
-    await expect(page).toHaveURL(/localhost:\d+\/crear$/);
+    await expect(page).toHaveURL(/\/crear\/?$/);
+    expect(page.url()).not.toContain("evil.example");
   });
 
   test("la recuperación responde igual exista o no la cuenta", async ({ page }) => {

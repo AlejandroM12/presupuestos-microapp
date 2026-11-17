@@ -72,12 +72,16 @@ export async function saveCustomerAction(
   const rawId = String(form.get("id") ?? "");
   try {
     if (rawId) {
-      await updateCustomer(user.id, uuid.parse(rawId), customerInput(form));
-      revalidatePath("/dashboard", "layout");
+      const id = uuid.parse(rawId);
+      await updateCustomer(user.id, id, customerInput(form));
+      // Evitar revalidatePath(..., "layout"): remonta el formulario cliente y borra el
+      // estado "Cambios guardados" antes de que Playwright (u otro cliente) lo lea.
+      revalidatePath("/dashboard/clientes");
+      revalidatePath(`/dashboard/clientes/${id}`);
       return { saved: true, message: "Cambios guardados." };
     }
     const created = await createCustomer(user.id, customerInput(form));
-    revalidatePath("/dashboard", "layout");
+    revalidatePath("/dashboard/clientes");
     redirect(`/dashboard/clientes/${created.id}`);
   } catch (error) {
     if (error instanceof z.ZodError) return { errors: zodErrors(error) };

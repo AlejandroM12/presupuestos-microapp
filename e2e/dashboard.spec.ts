@@ -224,7 +224,9 @@ test.describe("dashboard", () => {
 
     await page.getByLabel("Teléfono").fill("+54 11 5555-1234");
     await page.getByRole("button", { name: "Guardar cambios" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Cambios guardados" })).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: "Cambios guardados" })).toBeVisible({
+      timeout: 15_000,
+    });
 
     await page.goto("/dashboard/clientes?q=espiga");
     await expect(page.getByText("Panadería La Espiga")).toBeVisible();
@@ -245,8 +247,16 @@ test.describe("dashboard", () => {
     await page.getByLabel("WhatsApp").fill("+54 9 11 5555-9999");
     await page.getByLabel("Validez por defecto (días)").fill("45");
     await page.getByLabel("Forma de pago habitual").fill("Contado");
-    await page.getByRole("button", { name: "Guardar cambios" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Cambios guardados" })).toBeVisible();
+    await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes("/api/profile") && r.request().method() === "PUT" && r.ok(),
+        { timeout: 15_000 },
+      ),
+      page.getByRole("button", { name: "Guardar cambios" }).click(),
+    ]);
+    await expect(page.getByRole("status").filter({ hasText: "Cambios guardados" })).toBeVisible({
+      timeout: 15_000,
+    });
 
     await page.goto("/crear");
     await expect(page.getByLabel("Nombre comercial")).toHaveValue("Taller Rojas");
