@@ -51,8 +51,8 @@ export const LEGAL_PAGES: LegalPage[] = [
         heading: "4. Planes y precios",
         body: [
           `Gratis: ${LIMITS.freeMonthlyDownloads} descargas de PDF por mes, un diseño y marca de AtajoLab.`,
-          `Pack Premium: pago único de ${formatArs(PRICING.premiumPack)} (ver condiciones del pack).`,
-          `Pro: ${formatArs(PRICING.proMonthly)} por mes o ${formatArs(PRICING.proYearly)} por año (ver condiciones de suscripción). Precios en pesos argentinos [COMPLETAR: indicar si incluyen IVA u otros impuestos según la situación fiscal del titular].`,
+          `Pack Premium: pago único de ${formatArs(PRICING.premiumPack)}, ${LIMITS.premiumPackMonthlyDownloads} descargas mensuales y diseños premium (ver condiciones del pack).`,
+          `Pro: ${formatArs(PRICING.proMonthly)} por mes o ${formatArs(PRICING.proYearly)} por año, con descargas sujetas a uso razonable (ver condiciones de suscripción). Precios en pesos argentinos [COMPLETAR: indicar si incluyen IVA u otros impuestos según la situación fiscal del titular].`,
           "Los pagos se procesan a través de Mercado Pago; no almacenamos datos de tarjetas.",
         ],
       },
@@ -187,8 +187,8 @@ export const LEGAL_PAGES: LegalPage[] = [
       {
         heading: "1. Qué incluye",
         body: [
-          `Pago único de ${formatArs(PRICING.premiumPack)}: cinco diseños premium, personalización de colores y PDFs sin marca de AtajoLab.`,
-          `No incluye descargas ilimitadas: se mantiene el límite de ${LIMITS.freeMonthlyDownloads} descargas mensuales. Tampoco incluye historial en la nube ni dashboard (Pro).`,
+          `Pago único de ${formatArs(PRICING.premiumPack)}: cinco diseños premium, Minimalista, personalización de colores, PDFs sin marca de AtajoLab y ${LIMITS.premiumPackMonthlyDownloads} descargas mensuales.`,
+          "No incluye historial en la nube, gestión de clientes ni dashboard (eso corresponde al plan Pro).",
         ],
       },
       {
@@ -214,12 +214,12 @@ export const LEGAL_PAGES: LegalPage[] = [
   {
     slug: "uso-razonable",
     title: "Política de uso razonable",
-    summary: "Qué significa «ilimitado» en el plan Pro.",
+    summary: "Límites técnicos y revisión preventiva del plan Pro.",
     sections: [
       {
         heading: "1. Principio",
         body: [
-          "Pro permite descargar PDF sin un número mensual anunciado, pensado para el uso normal de un profesional o negocio. Esta política evita el abuso y la automatización masiva.",
+          "Pro está pensado para el uso normal de un profesional o negocio. Las descargas están sujetas a uso razonable: no hay un cupo comercial bajo, pero sí límites técnicos publicados para evitar abuso y automatización.",
         ],
       },
       {

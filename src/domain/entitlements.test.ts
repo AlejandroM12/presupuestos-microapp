@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { LIMITS } from "@/lib/config/plans";
+import { LIMITS, PRICING } from "@/lib/config/plans";
 import {
   ANONYMOUS,
   computeEntitlements,
   decidePdfRender,
+  monthlyDownloadLimit,
   type AccessContext,
 } from "./entitlements";
 
@@ -15,31 +16,47 @@ const user = (over: Partial<AccessContext> = {}): AccessContext => ({
   ...over,
 });
 
+describe("precios congelados", () => {
+  it("mantiene los importes comerciales actuales en ARS", () => {
+    expect(PRICING.premiumPack).toBe(9900);
+    expect(PRICING.proMonthly).toBe(5900);
+    expect(PRICING.proYearly).toBe(59000);
+  });
+});
+
 describe("computeEntitlements", () => {
-  it("plan gratis: solo Minimalista y límite mensual", () => {
+  it("plan gratis: solo Minimalista y 3 descargas mensuales", () => {
     const e = computeEntitlements(user());
     expect(e.templates).toEqual(["minimalista"]);
     expect(e.downloadLimit).toBe(LIMITS.freeMonthlyDownloads);
+    expect(e.downloadCap).toBe(LIMITS.freeMonthlyDownloads);
     expect(e.downloadsRemaining).toBe(LIMITS.freeMonthlyDownloads);
     expect(e.allowCustomColor).toBe(false);
     expect(e.cloudFeatures).toBe(false);
   });
 
-  it("pack premium: 5 diseños y color propio, pero mantiene el límite gratuito", () => {
+  it("pack premium: 6 diseños, color propio y 20 descargas mensuales", () => {
     const e = computeEntitlements(user({ ownsPremiumPack: true, downloadsThisMonth: 1 }));
     expect(e.templates).toHaveLength(6);
     expect(e.allowCustomColor).toBe(true);
-    expect(e.downloadLimit).toBe(LIMITS.freeMonthlyDownloads);
-    expect(e.downloadsRemaining).toBe(LIMITS.freeMonthlyDownloads - 1);
+    expect(e.downloadLimit).toBe(LIMITS.premiumPackMonthlyDownloads);
+    expect(e.downloadCap).toBe(LIMITS.premiumPackMonthlyDownloads);
+    expect(e.downloadsRemaining).toBe(LIMITS.premiumPackMonthlyDownloads - 1);
     expect(e.cloudFeatures).toBe(false);
   });
 
-  it("pro: todos los diseños, sin límite visible y con funciones de nube", () => {
+  it("pro: todos los diseños, sin cupo anunciado y con tope técnico", () => {
     const e = computeEntitlements(user({ proActive: true, downloadsThisMonth: 40 }));
     expect(e.templates).toHaveLength(6);
     expect(e.downloadLimit).toBeNull();
     expect(e.downloadCap).toBe(LIMITS.proHardCeilingMonthly);
     expect(e.cloudFeatures).toBe(true);
+  });
+
+  it("Pro + Pack usa el cupo técnico de Pro (no el del pack)", () => {
+    expect(
+      monthlyDownloadLimit(user({ ownsPremiumPack: true, proActive: true })),
+    ).toBe(LIMITS.proHardCeilingMonthly);
   });
 
   it("Pro sigue pudiendo descargar al superar el umbral de revisión", () => {
@@ -102,23 +119,36 @@ describe("decidePdfRender", () => {
     }
   });
 
-  it("aplica el límite mensual a gratis y pack, pero no a Pro", () => {
-    const over = { downloadsThisMonth: LIMITS.freeMonthlyDownloads };
-    expect(decidePdfRender(user(over), { templateId: "minimalista", preview: false })).toEqual({
-      allowed: false,
-      reason: "download_limit_reached",
-    });
+  it("aplica el límite mensual distinto a gratis, pack y Pro", () => {
     expect(
-      decidePdfRender(user({ ...over, ownsPremiumPack: true }), {
-        templateId: "tecnico",
+      decidePdfRender(user({ downloadsThisMonth: LIMITS.freeMonthlyDownloads }), {
+        templateId: "minimalista",
         preview: false,
       }),
     ).toEqual({ allowed: false, reason: "download_limit_reached" });
+
     expect(
-      decidePdfRender(user({ ...over, proActive: true }), {
-        templateId: "tecnico",
-        preview: false,
-      }),
+      decidePdfRender(
+        user({ ownsPremiumPack: true, downloadsThisMonth: LIMITS.freeMonthlyDownloads }),
+        { templateId: "tecnico", preview: false },
+      ),
+    ).toMatchObject({ allowed: true });
+
+    expect(
+      decidePdfRender(
+        user({
+          ownsPremiumPack: true,
+          downloadsThisMonth: LIMITS.premiumPackMonthlyDownloads,
+        }),
+        { templateId: "tecnico", preview: false },
+      ),
+    ).toEqual({ allowed: false, reason: "download_limit_reached" });
+
+    expect(
+      decidePdfRender(
+        user({ proActive: true, downloadsThisMonth: LIMITS.premiumPackMonthlyDownloads }),
+        { templateId: "tecnico", preview: false },
+      ),
     ).toMatchObject({ allowed: true });
   });
 

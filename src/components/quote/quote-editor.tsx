@@ -534,7 +534,7 @@ function EditorForm({
               {!entitlements.authenticated
                 ? `Podés armar y previsualizar sin cuenta. Para descargar el PDF necesitás una cuenta gratuita (${LIMITS.freeMonthlyDownloads} descargas por mes).`
                 : entitlements.downloadLimit === null
-                  ? "Plan Pro: descargas sin límite (uso razonable)."
+                  ? "Plan Pro: descargas con uso razonable."
                   : entitlements.downloadsRemaining > 0
                     ? `Te quedan ${entitlements.downloadsRemaining} de ${entitlements.downloadLimit} descargas este mes.`
                     : `Usaste tus ${entitlements.downloadLimit} descargas de este mes.`}

@@ -11,7 +11,11 @@ export const FAQ_ITEMS = [
   },
   {
     q: "¿Qué incluye el Pack Premium?",
-    a: "Cinco diseños adicionales, personalización de colores y PDFs sin marca. Se paga una sola vez y queda asociado a tu cuenta. No incluye descargas ilimitadas ni historial en la nube.",
+    a: "Veinte descargas por mes, cinco diseños premium más Minimalista, colores personalizables y PDFs sin marca AtajoLab. Se paga una sola vez y queda asociado a tu cuenta. No incluye historial en la nube, clientes ni dashboard.",
+  },
+  {
+    q: "¿Cuántos PDF puedo descargar con Pro?",
+    a: "Las descargas de Pro están sujetas a uso razonable: hasta 60 PDF por hora y 3.000 por mes. A partir de 500 descargas mensuales registramos la actividad de forma preventiva, sin bloquearte por alcanzar ese número.",
   },
   {
     q: "¿Qué pasa si cancelo Pro?",

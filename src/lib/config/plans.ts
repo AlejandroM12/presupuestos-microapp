@@ -20,6 +20,8 @@ export const PRICING = {
 
 export const LIMITS = {
   freeMonthlyDownloads: 3,
+  /** Descargas finales mensuales incluidas en el Pack Premium (pago único). */
+  premiumPackMonthlyDownloads: 20,
   /**
    * Política de uso razonable de Pro. Superar el umbral de revisión NO bloquea: solo se registra
    * para revisar el caso. El tope técnico y el límite por hora existen contra abuso y
@@ -61,25 +63,30 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     name: "Pack Premium",
     tagline: "Pago único, tuyo para siempre",
     features: [
+      `${LIMITS.premiumPackMonthlyDownloads} descargas por mes`,
       "5 diseños premium: Ejecutivo, Moderno, Creativo, Técnico y Comercial",
-      "Acceso permanente a los diseños",
+      "Incluye el diseño Minimalista",
+      "Acceso permanente a los diseños adquiridos",
       "PDF sin marca AtajoLab",
       "Colores personalizables",
     ],
-    excludes: ["Mantiene el límite gratuito de descargas mensuales"],
+    excludes: [
+      "No incluye historial en la nube, clientes ni dashboard (eso es Pro)",
+    ],
   },
   pro: {
     id: "pro",
     name: "Pro",
     tagline: "Para quienes presupuestan todas las semanas",
     features: [
-      "Descargas sin límite mensual anunciado (sujeto a uso razonable)",
-      "Todos los diseños incluidos",
+      "Todos los diseños comerciales incluidos",
       "Historial de presupuestos en la nube",
       "Gestión de clientes",
-      "Duplicar, editar y cambiar estados",
       "Dashboard con métricas",
+      "Duplicar, editar y gestionar estados",
       "PDF sin marca AtajoLab",
+      `Descargas con uso razonable: hasta ${LIMITS.proBurstPerHour}/hora y ${LIMITS.proHardCeilingMonthly}/mes`,
+      `Revisión preventiva desde ${LIMITS.proReviewThresholdMonthly} descargas/mes (sin bloqueo)`,
     ],
   },
 };

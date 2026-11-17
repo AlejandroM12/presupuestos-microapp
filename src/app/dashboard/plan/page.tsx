@@ -101,7 +101,7 @@ export default async function PlanPage({
             <dt className="text-xs text-muted-foreground">Descargas este mes</dt>
             <dd className="font-medium text-ink">
               {entitlements.downloadLimit === null
-                ? "Sin límite (uso razonable)"
+                ? `Uso razonable (${entitlements.downloadCap - entitlements.downloadsRemaining} de ${entitlements.downloadCap} técnicos)`
                 : `${entitlements.downloadLimit - entitlements.downloadsRemaining} de ${entitlements.downloadLimit}`}
             </dd>
           </div>

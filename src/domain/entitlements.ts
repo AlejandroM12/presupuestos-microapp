@@ -25,9 +25,12 @@ export interface Entitlements {
   ownsPremiumPack: boolean;
   /** Plantillas con las que se puede generar el PDF final. */
   templates: string[];
-  /** Descargas finales restantes este mes; null = sin límite (Pro). */
+  /** Descargas finales restantes este mes (Pro: hasta el tope técnico de uso razonable). */
   downloadsRemaining: number;
-  /** Límite visible para la persona; null en Pro (uso razonable, sin tope anunciado). */
+  /**
+   * Límite visible para la persona.
+   * Free/Pack: cupo mensual anunciado. Pro: null (se comunica la política de uso razonable).
+   */
   downloadLimit: number | null;
   /** Tope técnico mensual que aplica el servidor (en Pro, la política de uso razonable). */
   downloadCap: number;
@@ -36,12 +39,18 @@ export interface Entitlements {
   cloudFeatures: boolean;
 }
 
+/** Cupo mensual anunciado según el plan (Pro no anuncia cupo; usa tope técnico). */
+export function monthlyDownloadLimit(ctx: AccessContext): number {
+  if (ctx.proActive) return LIMITS.proHardCeilingMonthly;
+  if (ctx.ownsPremiumPack) return LIMITS.premiumPackMonthlyDownloads;
+  return LIMITS.freeMonthlyDownloads;
+}
+
 export function computeEntitlements(ctx: AccessContext): Entitlements {
   const premiumTemplates = TEMPLATES.filter((t) => t.tier === "premium").map((t) => t.id);
   const premiumUnlocked = ctx.proActive || ctx.ownsPremiumPack;
-  const unlimited = ctx.proActive;
-  const limit = LIMITS.freeMonthlyDownloads;
-  const cap = unlimited ? LIMITS.proHardCeilingMonthly : limit;
+  const pro = ctx.proActive;
+  const cap = monthlyDownloadLimit(ctx);
 
   return {
     authenticated: ctx.authenticated,
@@ -49,7 +58,7 @@ export function computeEntitlements(ctx: AccessContext): Entitlements {
     ownsPremiumPack: ctx.ownsPremiumPack,
     templates: premiumUnlocked ? [FREE_TEMPLATE_ID, ...premiumTemplates] : [FREE_TEMPLATE_ID],
     downloadsRemaining: Math.max(0, cap - ctx.downloadsThisMonth),
-    downloadLimit: unlimited ? null : limit,
+    downloadLimit: pro ? null : cap,
     downloadCap: cap,
     allowCustomColor: premiumUnlocked,
     cloudFeatures: ctx.proActive,
@@ -107,7 +116,7 @@ export const DENIAL_MESSAGES: Record<DenialReason, string> = {
   template_locked:
     "Este diseño es parte del Pack Premium. Podés ver la vista previa antes de comprarlo.",
   download_limit_reached:
-    "Alcanzaste el límite de descargas gratuitas de este mes. Pasate a Pro para descargar sin límite.",
+    "Alcanzaste el límite de descargas de este mes. Revisá tu plan o esperá al próximo período.",
 };
 
 export const DENIAL_STATUS: Record<DenialReason, number> = {

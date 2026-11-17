@@ -6,7 +6,7 @@ Precios y límites centralizados en `src/lib/config/plans.ts` (los precios se pu
 | --- | --- | --- | --- | --- |
 | Precio | — | $0 | $9.900 ARS único | $5.900/mes o $59.000/año |
 | Editor y vista previa | Sí | Sí | Sí | Sí |
-| Descargar PDF final | No (requiere cuenta) | 3 por mes | 3 por mes | Sin límite mensual anunciado, sujeto a uso razonable (ver abajo) |
+| Descargar PDF final | No (requiere cuenta) | 3 por mes | 20 por mes | Uso razonable (ver abajo) |
 | Diseño Minimalista | Vista previa | Sí (con marca AtajoLab) | Sí | Sí |
 | 5 diseños premium | Vista previa con marca de agua | Vista previa | Sí, permanente, sin marca | Sí, sin marca |
 | Colores personalizados | No | No | Sí | Sí |
@@ -15,14 +15,14 @@ Precios y límites centralizados en `src/lib/config/plans.ts` (los precios se pu
 Notas:
 
 - El límite mensual se cuenta por usuario y mes calendario (UTC) en la tabla `DownloadUsage`, con reserva atómica. La vista previa no cuenta.
-- La marca de AtajoLab aparece únicamente en el diseño gratuito.
-- Al cancelar Pro: la cuenta, las compras únicas y los presupuestos guardados (en modo lectura) se conservan; las funciones de Pro se pierden al finalizar el período pagado.
+- La marca de AtajoLab aparece únicamente en el diseño gratuito (Minimalista) cuando se usa sin licencia premium/privada.
+- Al cancelar Pro: la cuenta, las compras únicas (Pack Premium y plantillas privadas) y los presupuestos guardados (en modo lectura) se conservan; las funciones de Pro se pierden al finalizar el período pagado.
 - Al vencer un cobro de Pro, el acceso continúa hasta el fin del período ya pagado.
 - Los PDF son presupuestos comerciales: no son facturas ni tienen validez fiscal.
 
 ## Política de uso razonable de Pro
 
-Pro se comunica como "descargas ilimitadas sujetas a uso razonable". No se corta a un número bajo; hay tres mecanismos, todos en `LIMITS` (`src/lib/config/plans.ts`):
+Pro permite descargas sujetas a uso razonable. No usamos la expresión «sin límite mensual anunciado». Hay tres mecanismos, todos en `LIMITS` (`src/lib/config/plans.ts`):
 
 | Mecanismo | Valor | Efecto |
 | --- | --- | --- |

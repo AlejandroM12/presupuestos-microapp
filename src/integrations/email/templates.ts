@@ -87,7 +87,7 @@ export function proActivatedEmail(
     preheader: "Tu plan Pro ya está activo.",
     title: "¡Bienvenido a Pro!",
     paragraphs: [
-      `Activamos tu plan Pro ${plan === "YEARLY" ? "anual" : "mensual"}. Ya tenés descargas ilimitadas, todos los diseños, historial en la nube, clientes y dashboard.`,
+      `Activamos tu plan Pro ${plan === "YEARLY" ? "anual" : "mensual"}. Ya tenés todos los diseños, historial en la nube, clientes, dashboard y descargas con uso razonable.`,
       `Tu acceso está vigente hasta el ${dateAr(until)} y se renueva automáticamente mientras no canceles.`,
     ],
     cta: { label: "Ir a mi cuenta", url: `${siteConfig.url}/dashboard` },

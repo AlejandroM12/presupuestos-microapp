@@ -67,7 +67,7 @@ export default async function ResultPage({ searchParams }: { searchParams: Promi
               </h1>
               <p className="mt-2 text-sm text-muted-foreground">
                 {isPro
-                  ? "Ya tenés descargas ilimitadas, todos los diseños, historial en la nube y dashboard."
+                  ? "Ya tenés todos los diseños, historial en la nube, dashboard y descargas con uso razonable."
                   : "Ya podés usar los 5 diseños premium y descargar sin la marca de AtajoLab."}
               </p>
               <Link
