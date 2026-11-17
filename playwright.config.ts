@@ -21,9 +21,10 @@ export default defineConfig({
     { name: "mobile", use: { ...devices["Pixel 7"] } },
   ],
   webServer: {
+    // Con `output: "standalone"`, `next start` no sirve: hay que correr el server.js generado.
     command:
       process.env.CI || process.env.E2E_PROD
-        ? `pnpm exec next start -p ${port}`
+        ? `node scripts/prepare-standalone.mjs && node .next/standalone/server.js`
         : `pnpm exec next dev -p ${port}`,
     url: `http://localhost:${port}`,
     reuseExistingServer: !process.env.CI,
@@ -31,6 +32,8 @@ export default defineConfig({
     env: {
       ...(process.env.TEST_DATABASE_URL ? { DATABASE_URL: process.env.TEST_DATABASE_URL } : {}),
       APP_URL: `http://localhost:${port}`,
+      PORT: String(port),
+      HOSTNAME: "127.0.0.1",
       AUTH_SECRET: process.env.AUTH_SECRET ?? "e2e-secret-not-for-production-use-0123456789",
       AUTH_TRUST_HOST: "true",
       RATE_LIMIT_REGISTER_PER_HOUR: "1000",

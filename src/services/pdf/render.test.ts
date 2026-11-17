@@ -209,7 +209,7 @@ describe.runIf(process.env.PDF_DUMP_DIR)("volcado de PDFs de muestra", () => {
             "Nota larga con descuentos e impuestos aplicados en los conceptos y en el pie. ".repeat(
               4,
             ),
-          surcharges: [{ id: "rec", label: "Recargo administrativo", type: "percent", value: "5" }],
+          surcharge: { type: "percent", value: "5" },
         });
         stress.issuer.logo = logo;
         stress.items = stress.items.map((item, i) => ({
@@ -239,7 +239,7 @@ describe("estrés de paginación (50 conceptos, textos largos, USD)", () => {
         currency: "USD",
         terms: "Condición comercial muy larga. ".repeat(40),
         notes: "Observación extendida. ".repeat(20),
-        surcharges: [{ id: "r", label: "Recargo", type: "fixed", value: "100" }],
+        surcharge: { type: "fixed", value: "100" },
       });
       q.issuer.logo =
         "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
