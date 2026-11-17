@@ -1,6 +1,6 @@
 # Despliegue
 
-> **Estado**: la configuración está lista y verificada en local (imagen, migraciones, backup/restauración). **No se desplegó** en el VPS ni se tocó la infraestructura compartida. Antes del primer despliegue hay que inspeccionar el servidor real (ver "Verificaciones previas").
+> **Estado**: la configuración está lista. En el VPS (2026-11-17) el usuario `deploy` **ya tiene** grupo `docker`; Agendia corre healthy. Directorio `/opt/atajolab/apps/presupuestos` y `.env` (600) preparados. **Aún no se levantaron** contenedores de Presupuestos: falta `docker login` a GHCR (`read:packages`), DNS y autorización para el sitio Caddy.
 
 ## Esquema
 
@@ -20,8 +20,9 @@ Acceso: `ssh -i ~/.ssh/atajolab_prod deploy@167.233.65.236`. Hallazgos verificad
 - `/opt/atajolab/{apps,backups,proxy}`; `apps/agendia` es la única app instalada. `proxy/` y `backups/` están vacíos.
 - **Caddy no es un servicio del host: corre dentro del compose de Agendia** (red Docker `agendia-edge`), y su Caddyfile hace `import sites/*.caddy` desde `/opt/atajolab/apps/agendia/deploy/sites/`.
 - Agendia tiene su propio PostgreSQL y un servicio de backup/offsite propios: **no se reutilizan**; Presupuestos usa su propio contenedor `db` (perfil `own-db`).
-- Limitación actual: el usuario `deploy` **no pertenece al grupo `docker`** y `sudo` pide contraseña, por lo que no se puede ejecutar Docker ni recargar Caddy desde esta sesión (ver `docs/PRODUCTION_CHECKLIST.md`).
+- `deploy` pertenece al grupo `docker` (desbloqueado tras el despliegue de Agendia).
 - El DNS de `presupuestos.atajolab.dev` no existe todavía.
+- GHCR: no hay `~/.docker/config.json` en el VPS → hace falta `docker login ghcr.io` con un token `read:packages`.
 
 ## Decisiones de despliegue
 
