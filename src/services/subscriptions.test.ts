@@ -80,6 +80,7 @@ describe.skipIf(!enabled)("suscripciones Pro (PostgreSQL + Mercado Pago simulado
     gateway.subscriptions.length = 0;
     gateway.remoteSubscriptions.clear();
     gateway.payments.clear();
+    gateway.authorizedPayments.clear();
     gateway.cancelled.length = 0;
     gateway.failCreate = false;
     sent.length = 0;
@@ -318,6 +319,16 @@ describe.skipIf(!enabled)("suscripciones Pro (PostgreSQL + Mercado Pago simulado
     expect(await run("payment", "8001", "r2")).toBe("processed");
     expect(await run("payment", "8001", "r2")).toBe("duplicate");
     expect(await run("payment", "8001", "r3")).toBe("processed");
+    // Cuota sin cobro anidado: se ignora hasta que Mercado Pago notifique el débito.
+    gateway.authorizedPayments.set("abc", {
+      id: "abc",
+      preapprovalId: sub.providerSubscriptionId,
+      externalReference: sub.externalReference,
+      amount: PRICING.proMonthly,
+      currency: "ARS",
+      status: "scheduled",
+      payment: null,
+    });
     expect(await run("subscription_authorized_payment", "abc", "r4")).toBe("ignored");
 
     const row = await db.subscription.findUniqueOrThrow({ where: { id: sub.id } });
@@ -325,6 +336,89 @@ describe.skipIf(!enabled)("suscripciones Pro (PostgreSQL + Mercado Pago simulado
     expect(row.currentPeriodEnd).not.toBeNull();
     expect(await db.payment.count({ where: { subscriptionId: sub.id } })).toBe(1);
     expect(sent.filter((m) => m.subject.includes("activo"))).toHaveLength(1);
+  });
+
+  it("activa Pro desde subscription_authorized_payment vinculando por preapproval_id", async () => {
+    const sub = await checkout("MONTHLY");
+    // Sin external_reference en la cuota: el vínculo seguro es preapproval_id.
+    gateway.authorizedPayments.set("inv-1", {
+      id: "inv-1",
+      preapprovalId: sub.providerSubscriptionId,
+      externalReference: null,
+      amount: PRICING.proMonthly,
+      currency: "ARS",
+      status: "processed",
+      payment: { id: "pay-ap-1", status: "approved" },
+    });
+
+    expect(
+      await handleWebhookNotification({
+        requestId: "ap-1",
+        type: "subscription_authorized_payment",
+        dataId: "inv-1",
+        body: {},
+      }),
+    ).toBe("processed");
+    expect(
+      await handleWebhookNotification({
+        requestId: "ap-1",
+        type: "subscription_authorized_payment",
+        dataId: "inv-1",
+        body: {},
+      }),
+    ).toBe("duplicate");
+
+    const row = await db.subscription.findUniqueOrThrow({ where: { id: sub.id } });
+    expect(row.status).toBe("ACTIVE");
+    expect(row.currentPeriodEnd).not.toBeNull();
+    expect(await db.payment.count({ where: { subscriptionId: sub.id, status: "APPROVED" } })).toBe(
+      1,
+    );
+    expect((await loadAccessContext(user.id, T0)).proActive).toBe(true);
+  });
+
+  it("marca PAST_DUE ante cobro rechazado en authorized_payment y rechaza importes distintos", async () => {
+    const sub = await checkout("MONTHLY");
+    await applyRemoteSubscriptionPayment(payment(sub.externalReference, "first"), {}, T0);
+
+    gateway.authorizedPayments.set("inv-rej", {
+      id: "inv-rej",
+      preapprovalId: sub.providerSubscriptionId,
+      externalReference: sub.externalReference,
+      amount: PRICING.proMonthly,
+      currency: "ARS",
+      status: "recycling",
+      payment: { id: "pay-rej", status: "rejected" },
+    });
+    expect(
+      await handleWebhookNotification({
+        requestId: "ap-rej",
+        type: "subscription_authorized_payment",
+        dataId: "inv-rej",
+        body: {},
+      }),
+    ).toBe("processed");
+    expect((await db.subscription.findUniqueOrThrow({ where: { id: sub.id } })).status).toBe(
+      "PAST_DUE",
+    );
+
+    gateway.authorizedPayments.set("inv-bad", {
+      id: "inv-bad",
+      preapprovalId: sub.providerSubscriptionId,
+      externalReference: sub.externalReference,
+      amount: PRICING.proMonthly + 100,
+      currency: "ARS",
+      status: "processed",
+      payment: { id: "pay-bad", status: "approved" },
+    });
+    await expect(
+      handleWebhookNotification({
+        requestId: "ap-bad",
+        type: "subscription_authorized_payment",
+        dataId: "inv-bad",
+        body: {},
+      }),
+    ).rejects.toBeInstanceOf(SuspiciousPaymentError);
   });
 
   it("si el proveedor cancela la suscripción, el acceso sigue hasta el fin del período", async () => {

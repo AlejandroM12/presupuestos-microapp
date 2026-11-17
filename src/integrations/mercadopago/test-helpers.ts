@@ -3,6 +3,7 @@ import type {
   CheckoutSession,
   CreatePreferenceInput,
   CreateSubscriptionInput,
+  GatewayAuthorizedPayment,
   GatewayPayment,
   GatewaySubscription,
   PaymentGateway,
@@ -26,6 +27,7 @@ export class FakeGateway implements PaymentGateway {
   preferences: CreatePreferenceInput[] = [];
   subscriptions: CreateSubscriptionInput[] = [];
   payments = new Map<string, GatewayPayment>();
+  authorizedPayments = new Map<string, GatewayAuthorizedPayment>();
   remoteSubscriptions = new Map<string, GatewaySubscription>();
   cancelled: string[] = [];
   failCreate = false;
@@ -52,6 +54,10 @@ export class FakeGateway implements PaymentGateway {
 
   async getSubscription(id: string) {
     return this.remoteSubscriptions.get(id) ?? null;
+  }
+
+  async getAuthorizedPayment(id: string) {
+    return this.authorizedPayments.get(id) ?? null;
   }
 
   async cancelSubscription(id: string) {

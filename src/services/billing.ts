@@ -2,7 +2,11 @@ import { randomUUID } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import { getMailer } from "@/integrations/email/mailer";
 import { packPurchasedEmail } from "@/integrations/email/templates";
-import { mapPaymentStatus, type GatewayPayment } from "@/integrations/mercadopago/gateway";
+import {
+  mapPaymentStatus,
+  type GatewayAuthorizedPayment,
+  type GatewayPayment,
+} from "@/integrations/mercadopago/gateway";
 import { PRICING } from "@/lib/config/plans";
 import { db } from "@/server/db";
 import { PREMIUM_PACK } from "./access";
@@ -73,10 +77,11 @@ export async function applyRemotePayment(
   remote: GatewayPayment,
   options: { onlyForUserId?: string } = {},
 ): Promise<ProcessOutcome> {
-  if (!remote.externalReference) return "ignored";
-  if (remote.externalReference.startsWith("sub_")) {
+  // Cobros de suscripción: por nuestra referencia (`sub_…`) o por preapproval_id del proveedor.
+  if (remote.subscriptionId || remote.externalReference?.startsWith("sub_")) {
     return applyRemoteSubscriptionPayment(remote, options);
   }
+  if (!remote.externalReference) return "ignored";
   const row = await db.payment.findUnique({
     where: { externalReference: remote.externalReference },
   });
@@ -143,6 +148,38 @@ export async function processPaymentNotification(
   return applyRemotePayment(remote, options);
 }
 
+/**
+ * Convierte una cuota (`authorized_payments`) en el cobro que aplica la lógica de Pro.
+ * Sin `payment.id` la cuota aún no se debitó: se ignora hasta una notificación posterior.
+ * Vincula por `preapproval_id` y/o `external_reference` (documentación oficial MP).
+ */
+export function gatewayPaymentFromAuthorized(
+  invoice: GatewayAuthorizedPayment,
+): GatewayPayment | null {
+  if (!invoice.payment) return null;
+  return {
+    id: invoice.payment.id,
+    status: invoice.payment.status,
+    externalReference: invoice.externalReference,
+    amount: invoice.amount,
+    currency: invoice.currency,
+    payerEmail: null,
+    subscriptionId: invoice.preapprovalId,
+  };
+}
+
+/** Procesa el tema `subscription_authorized_payment`: consulta la cuota y aplica el cobro. */
+export async function processAuthorizedPaymentNotification(
+  authorizedPaymentId: string,
+  options: { onlyForUserId?: string } = {},
+): Promise<ProcessOutcome> {
+  const invoice = await requireGateway().getAuthorizedPayment(authorizedPaymentId);
+  if (!invoice) return "ignored";
+  const remote = gatewayPaymentFromAuthorized(invoice);
+  if (!remote) return "ignored";
+  return applyRemoteSubscriptionPayment(remote, options);
+}
+
 export interface WebhookInput {
   requestId: string;
   type: string;
@@ -190,6 +227,9 @@ export async function handleWebhookNotification(input: WebhookInput): Promise<We
         const outcome = await applyRemoteSubscription(remote);
         result = outcome === "ignored" ? "ignored" : "processed";
       }
+    } else if (input.type === "subscription_authorized_payment") {
+      const outcome = await processAuthorizedPaymentNotification(input.dataId);
+      result = outcome === "ignored" ? "ignored" : "processed";
     }
     await db.webhookEvent.update({
       where: { id: event.id },

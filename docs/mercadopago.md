@@ -14,7 +14,7 @@
 
 1. Crear una aplicación en [Mercado Pago Developers](https://www.mercadopago.com.ar/developers) (Argentina).
 2. Variables: `MERCADOPAGO_ACCESS_TOKEN` (usar primero las credenciales de **prueba**) y `MERCADOPAGO_WEBHOOK_SECRET` (clave secreta de la sección Webhooks).
-3. En Webhooks, URL `https://presupuestos.atajolab.dev/api/webhooks/mercadopago` y eventos: **Pagos** y **Planes y suscripciones** (`subscription_preapproval`).
+3. En Webhooks, URL `https://presupuestos.atajolab.dev/api/webhooks/mercadopago` y eventos: **Pagos** (`payment`), **Planes y suscripciones** (`subscription_preapproval`) y **cobros recurrentes** (`subscription_authorized_payment`).
 4. `APP_URL` debe ser `https` y público: Mercado Pago rechaza `auto_return` y `notification_url` con URLs locales (la app los omite si `APP_URL` no es https).
 
 ## Cómo se tratan los pagos
@@ -31,16 +31,26 @@
 - [ ] Completar un pago de prueba del Pack con un usuario de prueba y confirmar activación y email.
 - [ ] Completar alta, renovación (simulada) y cancelación de una suscripción de prueba.
 - [ ] Confirmar que llegan los webhooks firmados al VPS (ver logs `webhook_*`).
-- [ ] Verificar el campo que informa Mercado Pago como referencia en los cobros recurrentes (la lógica asume que repite el `external_reference` de la suscripción) y ajustar `services/subscriptions.ts` si difiere.
+- [ ] Verificar en sandbox que el cuerpo real de `authorized_payments` trae `preapproval_id` y, cuando corresponda, `payment.id`/`payment.status` (la app ya consulta ese recurso; no confía en el body del webhook).
 - [ ] Cambiar a credenciales de producción y repetir con un pago real de bajo importe.
 
-## Hallazgos de la documentación oficial (sin validar en sandbox)
+## Cobros recurrentes (`subscription_authorized_payment`)
 
-Revisado el 2026-11-13 en la documentación de Mercado Pago (suscripciones sin plan asociado, `authorized_payments`):
+Implementado según la documentación oficial (revisada 2026-11-17):
 
-- Las cuotas de una suscripción son recursos `authorized_payments` con `preapproval_id`, `external_reference`, `debit_date`, `retry_attempt` y un objeto `payment` anidado.
-- Hay un tema de webhook propio, `subscription_authorized_payment`, además de `subscription_preapproval` y `payments`. **Hoy la app solo procesa `payment` y `subscription_preapproval`**; los eventos de `subscription_authorized_payment` se persisten pero no se procesan. Los cobros recurrentes se vinculan hoy por `external_reference`/`metadata.preapproval_id` del pago: **supuesto sin confirmar**. Si en sandbox el pago de la renovación no trae esa referencia, hay que consultar `authorized_payments/{id}` y vincular por `preapproval_id`.
+1. El webhook se autentica y se registra (idempotencia por `requestId:type:dataId`).
+2. Se consulta `GET /authorized_payments/{id}` (el SDK Node no expone este cliente; se usa la API REST documentada con el mismo access token).
+3. Si la cuota aún no tiene `payment` anidado (p. ej. `scheduled` sin débito), el evento se ignora hasta una notificación posterior.
+4. Con cobro anidado, se aplica la misma lógica de Pro que un pago: vínculo por `preapproval_id` y/o `external_reference`, validación de importe/moneda, activación/renovación, `PAST_DUE` ante rechazo, idempotencia por `providerPaymentId`.
+5. Los temas `payment` y `subscription_preapproval` siguen activos (alta, cancelación, reembolsos vía pago).
+
+## Hallazgos de la documentación oficial (parcialmente sin validar en sandbox)
+
+Revisado en la documentación de Mercado Pago (suscripciones, `authorized_payments`):
+
+- Las cuotas son recursos `authorized_payments` con `preapproval_id`, `external_reference`, `debit_date`, `retry_attempt` y un objeto `payment` anidado.
+- La app procesa `payment`, `subscription_preapproval` y `subscription_authorized_payment`.
 - Reintentos del proveedor: una cuota rechazada entra en `recycling` con hasta 4 reintentos; tras 3 rechazos la suscripción se cancela y se notifica. La app trata el rechazo como `PAST_DUE` y mantiene el acceso hasta el fin del período ya pagado; la cancelación final llega por `subscription_preapproval`.
 - Al alta, Mercado Pago valida la tarjeta con un cargo pequeño y la primera cuota se cobra aproximadamente una hora después: Pro **no** se activa de inmediato en el alta, solo con el primer cobro aprobado.
 
-Antes de cobrar: habilitar también el tema `subscription_authorized_payment` en el panel y confirmar en sandbox el cuerpo real de cada notificación.
+**Pendiente de sandbox**: confirmar con credenciales de prueba el payload real y el orden de notificaciones. Los cobros productivos siguen deshabilitados hasta completar la lista de verificación.

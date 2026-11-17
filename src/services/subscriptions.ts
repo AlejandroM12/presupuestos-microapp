@@ -137,18 +137,33 @@ export async function applyRemoteSubscription(
   return "recorded";
 }
 
+const subscriptionInclude = { user: { select: { email: true } } } as const;
+
+/** Resuelve la suscripción local por external_reference o por preapproval_id del proveedor. */
+async function findSubscriptionForRemotePayment(remote: GatewayPayment) {
+  if (remote.externalReference) {
+    const byRef = await db.subscription.findUnique({
+      where: { externalReference: remote.externalReference },
+      include: subscriptionInclude,
+    });
+    if (byRef) return byRef;
+  }
+  if (remote.subscriptionId) {
+    return db.subscription.findFirst({
+      where: { providerSubscriptionId: remote.subscriptionId },
+      include: subscriptionInclude,
+    });
+  }
+  return null;
+}
+
 /** Aplica un cobro de suscripción (primer pago o renovación). Idempotente por pago. */
 export async function applyRemoteSubscriptionPayment(
   remote: GatewayPayment,
   options: { onlyForUserId?: string } = {},
   now: Date = new Date(),
 ): Promise<"ignored" | "recorded" | "activated" | "renewed" | "failed"> {
-  const sub = remote.externalReference
-    ? await db.subscription.findUnique({
-        where: { externalReference: remote.externalReference },
-        include: { user: { select: { email: true } } },
-      })
-    : null;
+  const sub = await findSubscriptionForRemotePayment(remote);
   if (!sub) return "ignored";
   if (options.onlyForUserId && sub.userId !== options.onlyForUserId) return "ignored";
 

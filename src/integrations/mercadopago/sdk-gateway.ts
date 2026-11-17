@@ -3,10 +3,13 @@ import type {
   CheckoutSession,
   CreatePreferenceInput,
   CreateSubscriptionInput,
+  GatewayAuthorizedPayment,
   GatewayPayment,
   GatewaySubscription,
   PaymentGateway,
 } from "./gateway";
+
+const API_BASE = "https://api.mercadopago.com";
 
 function isNotFound(error: unknown): boolean {
   return error instanceof MPNotFoundError || (error as { status?: number })?.status === 404;
@@ -14,11 +17,13 @@ function isNotFound(error: unknown): boolean {
 
 /** Implementación sobre el SDK oficial de Mercado Pago (Checkout Pro y Suscripciones). */
 export class MercadoPagoSdkGateway implements PaymentGateway {
+  private readonly accessToken: string;
   private readonly preference: Preference;
   private readonly payment: Payment;
   private readonly preApproval: PreApproval;
 
   constructor(accessToken: string) {
+    this.accessToken = accessToken;
     const config = new MercadoPagoConfig({ accessToken, options: { timeout: 10_000 } });
     this.preference = new Preference(config);
     this.payment = new Payment(config);
@@ -110,6 +115,50 @@ export class MercadoPagoSdkGateway implements PaymentGateway {
       if (isNotFound(error)) return null;
       throw error;
     }
+  }
+
+  /**
+   * El SDK Node no expone aún el cliente de authorized_payments; se consulta la API REST
+   * documentada (GET /authorized_payments/{id}) con el mismo access token.
+   */
+  async getAuthorizedPayment(authorizedPaymentId: string): Promise<GatewayAuthorizedPayment | null> {
+    const response = await fetch(`${API_BASE}/authorized_payments/${encodeURIComponent(authorizedPaymentId)}`, {
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+        "Content-Type": "application/json",
+      },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (response.status === 404) return null;
+    if (!response.ok) {
+      throw new Error(`Mercado Pago authorized_payments: HTTP ${response.status}`);
+    }
+    const body = (await response.json()) as {
+      id?: number | string;
+      preapproval_id?: string;
+      external_reference?: string | number | null;
+      transaction_amount?: string | number;
+      currency_id?: string;
+      status?: string;
+      payment?: { id?: number | string; status?: string } | null;
+    };
+    if (body.id === undefined || body.id === null) return null;
+    const nested = body.payment;
+    return {
+      id: String(body.id),
+      preapprovalId: body.preapproval_id ?? null,
+      externalReference:
+        body.external_reference === undefined || body.external_reference === null
+          ? null
+          : String(body.external_reference),
+      amount: Number(body.transaction_amount ?? 0),
+      currency: body.currency_id ?? "ARS",
+      status: body.status ?? "scheduled",
+      payment:
+        nested?.id !== undefined && nested.id !== null
+          ? { id: String(nested.id), status: nested.status ?? "pending" }
+          : null,
+    };
   }
 
   async cancelSubscription(subscriptionId: string): Promise<void> {

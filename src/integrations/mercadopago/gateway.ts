@@ -24,6 +24,23 @@ export interface GatewayPayment {
   subscriptionId: string | null;
 }
 
+/**
+ * Cuota/factura de una suscripción (`authorized_payments`).
+ * Documentación: GET /authorized_payments/{id}.
+ * El cobro real vive en `payment` (puede faltar si la cuota aún no se debitó).
+ */
+export interface GatewayAuthorizedPayment {
+  id: string;
+  /** Identificador de la suscripción (preapproval) en Mercado Pago. */
+  preapprovalId: string | null;
+  externalReference: string | null;
+  amount: number;
+  currency: string;
+  /** Estado de la cuota: scheduled, processed, recycling, cancelled, etc. */
+  status: string;
+  payment: { id: string; status: ProviderPaymentStatus } | null;
+}
+
 export interface CheckoutSession {
   id: string;
   /** URL a la que se redirige a la persona para pagar. */
@@ -69,6 +86,8 @@ export interface PaymentGateway {
   getPayment(paymentId: string): Promise<GatewayPayment | null>;
   createSubscription(input: CreateSubscriptionInput): Promise<CheckoutSession>;
   getSubscription(subscriptionId: string): Promise<GatewaySubscription | null>;
+  /** Cuota recurrente notificada por el tema `subscription_authorized_payment`. */
+  getAuthorizedPayment(authorizedPaymentId: string): Promise<GatewayAuthorizedPayment | null>;
   cancelSubscription(subscriptionId: string): Promise<void>;
 }
 
