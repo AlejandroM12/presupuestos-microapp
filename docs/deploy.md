@@ -1,6 +1,6 @@
 # Despliegue
 
-> **Estado**: la configuración está lista. En el VPS (2026-11-17) el usuario `deploy` **ya tiene** grupo `docker`; Agendia corre healthy. Directorio `/opt/atajolab/apps/presupuestos` y `.env` (600) preparados. **Aún no se levantaron** contenedores de Presupuestos: falta `docker login` a GHCR (`read:packages`), DNS y autorización para el sitio Caddy.
+> **Estado**: **desplegado** en el VPS (2026-11-17) en modalidad de validación controlada. Contenedores `presupuestos-app` y `presupuestos-db` healthy; HTTPS con Let's Encrypt en `presupuestos.atajolab.dev`; Caddy recargado sin reiniciar Agendia. Pagos y Resend deshabilitados a propósito. Detalle: `docs/PRODUCTION_CHECKLIST.md`.
 
 ## Esquema
 
@@ -20,9 +20,12 @@ Acceso: `ssh -i ~/.ssh/atajolab_prod deploy@167.233.65.236`. Hallazgos verificad
 - `/opt/atajolab/{apps,backups,proxy}`; `apps/agendia` es la única app instalada. `proxy/` y `backups/` están vacíos.
 - **Caddy no es un servicio del host: corre dentro del compose de Agendia** (red Docker `agendia-edge`), y su Caddyfile hace `import sites/*.caddy` desde `/opt/atajolab/apps/agendia/deploy/sites/`.
 - Agendia tiene su propio PostgreSQL y un servicio de backup/offsite propios: **no se reutilizan**; Presupuestos usa su propio contenedor `db` (perfil `own-db`).
-- `deploy` pertenece al grupo `docker` (desbloqueado tras el despliegue de Agendia).
-- El DNS de `presupuestos.atajolab.dev` no existe todavía.
-- GHCR: no hay `~/.docker/config.json` en el VPS → hace falta `docker login ghcr.io` con un token `read:packages`.
+- `deploy` pertenece al grupo `docker`.
+- DNS `presupuestos.atajolab.dev` → `167.233.65.236` y certificado Let's Encrypt emitido.
+- GHCR: autenticado en el VPS (`docker login`); imágenes app y migrate en uso.
+- Caddy: `deploy/sites/presupuestos.caddy` en el compose de Agendia; reload sin reinicio.
+- Cron del usuario `deploy`: billing horario, backup 03:15 UTC, monitor cada 5 min.
+- `EMAIL_FROM` debe ir entre comillas en `.env` (contiene `<…>`).
 
 ## Decisiones de despliegue
 
