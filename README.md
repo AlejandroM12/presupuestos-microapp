@@ -22,9 +22,9 @@ Detalle de planes y permisos: [`docs/plans.md`](docs/plans.md).
 | Área | Estado |
 | --- | --- |
 | Aplicación, tests, build | Implementado y probado |
-| Mercado Pago (Checkout Pro, suscripciones, webhooks) | Implementado y probado **con un doble del proveedor**. No validado con credenciales reales ni con cobros reales |
+| Mercado Pago (Checkout Pro, suscripciones, webhooks) | Implementado y probado **con un doble del proveedor** (incluye `subscription_authorized_payment`). No validado en sandbox ni con cobros reales |
 | Resend | Implementado y probado con el SDK simulado. Sin credenciales no se envía nada |
-| Infraestructura (Docker, compose, scripts) | Imagen, migraciones, backup, restauración y monitoreo verificados en local. **No desplegado** en el VPS (ver [checklist](docs/PRODUCTION_CHECKLIST.md)) |
+| Infraestructura (Docker, compose, scripts) | Docker en el VPS desbloqueado; dir y `.env` preparados. **Contenedores aún no levantados** (falta GHCR login + DNS + Caddy; ver [checklist](docs/PRODUCTION_CHECKLIST.md)) |
 | Facturación electrónica (ARCA) | No implementada: los PDF son presupuestos comerciales sin validez fiscal |
 
 ## Desarrollo rápido
