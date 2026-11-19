@@ -121,14 +121,19 @@ export class MercadoPagoSdkGateway implements PaymentGateway {
    * El SDK Node no expone aún el cliente de authorized_payments; se consulta la API REST
    * documentada (GET /authorized_payments/{id}) con el mismo access token.
    */
-  async getAuthorizedPayment(authorizedPaymentId: string): Promise<GatewayAuthorizedPayment | null> {
-    const response = await fetch(`${API_BASE}/authorized_payments/${encodeURIComponent(authorizedPaymentId)}`, {
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-        "Content-Type": "application/json",
+  async getAuthorizedPayment(
+    authorizedPaymentId: string,
+  ): Promise<GatewayAuthorizedPayment | null> {
+    const response = await fetch(
+      `${API_BASE}/authorized_payments/${encodeURIComponent(authorizedPaymentId)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+          "Content-Type": "application/json",
+        },
+        signal: AbortSignal.timeout(10_000),
       },
-      signal: AbortSignal.timeout(10_000),
-    });
+    );
     if (response.status === 404) return null;
     if (!response.ok) {
       throw new Error(`Mercado Pago authorized_payments: HTTP ${response.status}`);

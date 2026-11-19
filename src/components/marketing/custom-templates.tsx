@@ -1,12 +1,4 @@
-import {
-  Camera,
-  Hammer,
-  MessageCircle,
-  Store,
-  UserRound,
-  Wrench,
-  Zap,
-} from "lucide-react";
+import { Camera, Hammer, MessageCircle, Store, UserRound, Wrench, Zap } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { customTemplateRequestLinks } from "@/domain/commercial-whatsapp";
 import { hasCommercialWhatsapp } from "@/lib/config/commercial-contact";
@@ -214,8 +206,7 @@ export function CustomTemplates() {
                   <div>
                     <h3 className="font-display text-lg font-semibold text-ink">{p.title}</h3>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Ejemplo de campos que podemos incorporar. Cotizamos cada pedido según
-                      alcance.
+                      Ejemplo de campos que podemos incorporar. Cotizamos cada pedido según alcance.
                     </p>
                   </div>
                 </div>
@@ -234,9 +225,7 @@ export function CustomTemplates() {
                 </div>
                 <a
                   href={href}
-                  {...(whatsappReady
-                    ? { target: "_blank", rel: "noopener noreferrer" }
-                    : {})}
+                  {...(whatsappReady ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                   className="mt-4 text-sm font-medium text-brand hover:underline"
                 >
                   Consultar para {p.title.toLowerCase()}

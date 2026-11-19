@@ -179,56 +179,52 @@ describe("pdfFileName", () => {
 
 // Utilidad de desarrollo: PDF_DUMP_DIR=<carpeta> pnpm test pdf escribe un PDF por plantilla.
 describe.runIf(process.env.PDF_DUMP_DIR)("volcado de PDFs de muestra", () => {
-  it(
-    "escribe los PDFs",
-    async () => {
-      const { mkdirSync, writeFileSync } = await import("node:fs");
-      const { TEMPLATES } = await import("@/domain/templates");
-      const { hasTemplateComponent } = await import("./render");
-      mkdirSync(process.env.PDF_DUMP_DIR!, { recursive: true });
-      const logo =
-        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
-      const longTerms =
-        "Condiciones comerciales extensas para validar paginación: ".repeat(12) +
-        "Los precios no incluyen materiales extraordinarios ni demoliciones. " +
-        "La validez del presupuesto es la indicada en el encabezado. " +
-        "Cualquier modificación de alcance se cotizará por separado.";
-      for (const t of TEMPLATES.filter((t) => hasTemplateComponent(t.id))) {
-        for (const n of [3, 40]) {
-          const pdf = await renderQuotePdf(sampleQuote(n), {
-            templateId: t.id,
-            showBrand: t.tier === "free",
-            allowCustomColor: false,
-          });
-          writeFileSync(`${process.env.PDF_DUMP_DIR}/${t.id}-${n}.pdf`, pdf);
-        }
-        const stress = sampleQuote(50, {
-          currency: "USD",
-          terms: longTerms,
-          notes:
-            "Nota larga con descuentos e impuestos aplicados en los conceptos y en el pie. ".repeat(
-              4,
-            ),
-          surcharge: { type: "percent", value: "5" },
-        });
-        stress.issuer.logo = logo;
-        stress.items = stress.items.map((item, i) => ({
-          ...item,
-          description:
-            `${item.description}. Detalle adicional muy extenso del alcance del ítem ${i + 1}: ` +
-            "incluye mano de obra, coordinación en obra y limpieza parcial del sector intervenido.",
-          discountPercent: i % 4 === 0 ? "15" : item.discountPercent,
-        }));
-        const pdf = await renderQuotePdf(stress, {
+  it("escribe los PDFs", async () => {
+    const { mkdirSync, writeFileSync } = await import("node:fs");
+    const { TEMPLATES } = await import("@/domain/templates");
+    const { hasTemplateComponent } = await import("./render");
+    mkdirSync(process.env.PDF_DUMP_DIR!, { recursive: true });
+    const logo =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+    const longTerms =
+      "Condiciones comerciales extensas para validar paginación: ".repeat(12) +
+      "Los precios no incluyen materiales extraordinarios ni demoliciones. " +
+      "La validez del presupuesto es la indicada en el encabezado. " +
+      "Cualquier modificación de alcance se cotizará por separado.";
+    for (const t of TEMPLATES.filter((t) => hasTemplateComponent(t.id))) {
+      for (const n of [3, 40]) {
+        const pdf = await renderQuotePdf(sampleQuote(n), {
           templateId: t.id,
           showBrand: t.tier === "free",
           allowCustomColor: false,
         });
-        writeFileSync(`${process.env.PDF_DUMP_DIR}/${t.id}-stress50.pdf`, pdf);
+        writeFileSync(`${process.env.PDF_DUMP_DIR}/${t.id}-${n}.pdf`, pdf);
       }
-    },
-    60_000,
-  );
+      const stress = sampleQuote(50, {
+        currency: "USD",
+        terms: longTerms,
+        notes:
+          "Nota larga con descuentos e impuestos aplicados en los conceptos y en el pie. ".repeat(
+            4,
+          ),
+        surcharge: { type: "percent", value: "5" },
+      });
+      stress.issuer.logo = logo;
+      stress.items = stress.items.map((item, i) => ({
+        ...item,
+        description:
+          `${item.description}. Detalle adicional muy extenso del alcance del ítem ${i + 1}: ` +
+          "incluye mano de obra, coordinación en obra y limpieza parcial del sector intervenido.",
+        discountPercent: i % 4 === 0 ? "15" : item.discountPercent,
+      }));
+      const pdf = await renderQuotePdf(stress, {
+        templateId: t.id,
+        showBrand: t.tier === "free",
+        allowCustomColor: false,
+      });
+      writeFileSync(`${process.env.PDF_DUMP_DIR}/${t.id}-stress50.pdf`, pdf);
+    }
+  }, 60_000);
 });
 
 describe("estrés de paginación (50 conceptos, textos largos, USD)", () => {

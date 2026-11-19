@@ -70,9 +70,7 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
       "PDF sin marca AtajoLab",
       "Colores personalizables",
     ],
-    excludes: [
-      "No incluye historial en la nube, clientes ni dashboard (eso es Pro)",
-    ],
+    excludes: ["No incluye historial en la nube, clientes ni dashboard (eso es Pro)"],
   },
   pro: {
     id: "pro",

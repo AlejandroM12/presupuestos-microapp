@@ -175,10 +175,13 @@ export function ModernoDocument({ m }: { m: PdfModel }) {
         <Text style={s.title}>{q.title}</Text>
         {q.description ? <Text style={s.description}>{q.description}</Text> : null}
 
-        {tableRowChunks(m.rows.map((r, i) => ({ r, i })), {
-          firstPage: 3,
-          otherPages: 5,
-        }).map((chunk, chunkIndex) => (
+        {tableRowChunks(
+          m.rows.map((r, i) => ({ r, i })),
+          {
+            firstPage: 3,
+            otherPages: 5,
+          },
+        ).map((chunk, chunkIndex) => (
           <View key={chunkIndex} wrap={false}>
             <View style={s.thead}>
               <Text style={[s.th, s.cDesc]}>Descripción</Text>
@@ -187,10 +190,7 @@ export function ModernoDocument({ m }: { m: PdfModel }) {
               <Text style={[s.th, s.cAmount]}>Importe</Text>
             </View>
             {chunk.map(({ r, i }) => (
-              <View
-                key={i}
-                style={[s.row, { backgroundColor: i % 2 === 0 ? soft : "#ffffff" }]}
-              >
+              <View key={i} style={[s.row, { backgroundColor: i % 2 === 0 ? soft : "#ffffff" }]}>
                 <View style={s.cDesc}>
                   <Text>{r.description}</Text>
                   {r.discount !== "—" ? (
