@@ -1,6 +1,6 @@
 # Auditoría de seguridad
 
-Última revisión: 2026-11-17. Alcance: código de la aplicación y pruebas locales/E2E. **No sustituye** una auditoría externa ni pruebas de penetración sobre el VPS.
+Última revisión: 2026-11-19. Alcance: código de la aplicación y pruebas locales/E2E. **No sustituye** una auditoría externa ni pruebas de penetración sobre el VPS.
 
 ## Resumen
 
@@ -20,6 +20,8 @@
 | Secretos | OK en diseño | `.env` 600 en deploy; plantilla sin valores; no se versionan secretos |
 | Administración y roles | OK | `requireAdminUser`/`requireAdminApi` consultan el rol en la base en cada solicitud; 404 a no admin; rol revocado surte efecto inmediato; no hay autoasignación ni admin por defecto (`private-templates.spec.ts`) |
 | Plantillas privadas | OK | Asignación vigente verificada en servidor al guardar, previsualizar y descargar; sin asignación → misma respuesta que diseño bloqueado; configuración solo datos validados con Zod (sin HTML/JS) |
+| Vista previa de plantillas privadas | OK | Mismo endpoint y reglas que el PDF final; límite propio (`RATE_LIMIT_PREVIEW_PER_MINUTE`), marca de agua, no consume cupo; 403 sin asignación (`template-admin-form.spec.ts`, `demo-templates.spec.ts`) |
+| Rotación de `CRON_SECRET` (2026-11-19) | OK | Secreto nuevo de 64 caracteres generado en el servidor; el anterior devuelve 401; el cron lee el valor de `.env` (`scripts/cron-billing.sh`) y ya no queda en el crontab ni en procesos; prueba `route.test.ts` |
 | Dependencias | OK tras fix | `pnpm audit --prod --audit-level high` limpio; `shadcn` movido a `devDependencies` |
 
 ## Hallazgos aceptados (no bloqueantes)

@@ -58,7 +58,7 @@ docker login ghcr.io                                # token con permiso read:pac
 Después: Caddy (ver arriba), DNS, y las tareas programadas (cron del usuario `deploy`):
 
 ```
-0 * * * *   curl -fsS -X POST https://presupuestos.atajolab.dev/api/cron/billing -H "Authorization: Bearer $CRON_SECRET"
+0 * * * *   cd /opt/atajolab/apps/presupuestos && ./scripts/cron-billing.sh >> backups/cron-billing.log 2>&1
 15 3 * * *  cd /opt/atajolab/apps/presupuestos && ./scripts/backup.sh >> backup.log 2>&1
 */5 * * * * cd /opt/atajolab/apps/presupuestos && ./scripts/monitor.sh >> monitor.log 2>&1
 ```
@@ -70,6 +70,11 @@ Ver `deploy/.env.production.example`. Obligatorias: `DATABASE_URL`, `APP_URL`, `
 ## Tarea programada de facturación
 
 El cron horario de arriba vence suscripciones cuyo período terminó y concilia con Mercado Pago ante webhooks perdidos.
+
+## Secretos
+
+Se cargan con `./scripts/set-secret.sh [--recreate] VARIABLE…` (entrada oculta, `.env` en 600, solo variables permitidas). Para **rotar `CRON_SECRET`**: generar uno nuevo (`openssl rand -base64 48 | tr '+/' '-_' | tr -d '=
+'`), reemplazarlo en `.env`, recrear la app y comprobar que el anterior responde 401 y `./scripts/cron-billing.sh` responde 200. `cron-billing.sh` lee el secreto del `.env`: no hay que tocar el crontab. Guía de integraciones pendientes: `docs/guia-integraciones.md`.
 
 ## Rollback
 

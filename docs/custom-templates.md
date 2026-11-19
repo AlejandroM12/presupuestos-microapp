@@ -45,8 +45,8 @@ Tipos de campo: `text`, `textarea`, `number`, `date`, `select` (con `options`), 
    `docker exec presupuestos-db psql -U presupuestos -d presupuestos -c "UPDATE users SET role='ADMIN' WHERE email='tu@email';"`
    (o `node scripts/grant-admin.mjs <email>` con `DATABASE_URL` en un entorno con el repositorio). Quitar el rol: mismo `UPDATE` con `'USER'`; surte efecto en la siguiente solicitud porque el rol se consulta en la base cada vez.
 2. Entrar a **/admin/plantillas** → "Nueva plantilla" (queda en borrador).
-3. Editar el JSON de estilo/campos/secciones → "Guardar cambios".
-4. **Vista previa PDF**: botón en la ficha (datos de ejemplo; también en borrador). Iterar hasta aprobar el diseño con el cliente.
+3. Configurar con el **formulario** (estilo, secciones, campos con tipo, obligatorio, valor predeterminado, opciones y orden) → "Guardar cambios". El **modo avanzado (JSON)** sigue disponible. Ver `docs/admin.md`.
+4. **Vista previa**: "Vista previa de esta configuración" muestra en la propia página el PDF real con datos de ejemplo, sin guardar (también en borrador). Iterar hasta aprobar el diseño con el cliente.
 5. **Activar**: crea la versión 1 (inmutable). Una plantilla en borrador no la puede usar nadie aunque esté asignada.
 6. **Asignar** por email de la cuenta del cliente. El cliente verá "Mis plantillas" en el dashboard y en el editor, con sus campos.
 7. Cambios posteriores: editar → "Publicar nueva versión". Los presupuestos ya guardados siguen dibujándose con su versión original; los nuevos usan la última.
@@ -65,7 +65,32 @@ Cada acción administrativa queda en **/admin/auditoria**.
 
 `src/services/custom-templates.test.ts` (aislamiento, versionado, revocación, archivo, auditoría), `src/services/pdf/custom-render.test.ts` (PDF con campos, multipágina), `src/domain/entitlements.test.ts` y `e2e/private-templates.spec.ts` (administración, aislamiento entre usuarios, escalamiento de privilegios).
 
+## Vista previa fiel en el editor
+
+Al elegir una plantilla privada, el editor deja de mostrar la maqueta HTML y muestra **el mismo PDF que se descargará**:
+
+- Se pide al servidor con `POST /api/quotes/pdf?preview=1` (mismo renderizador, tipografías, colores, secciones y campos; con marca de agua "VISTA PREVIA") y se dibuja página por página con pdf.js (`src/components/quote/pdf-preview.tsx`, `src/lib/pdf-raster.ts`). pdf.js se carga recién al usar esta vista.
+- **Debounce de 900 ms** y cancelación de la solicitud anterior (`AbortController`): no se regenera con cada tecla. Si el formulario no es válido, no se pide nada.
+- Funciona igual en mobile (pestaña "Vista previa"), con documentos de varias páginas.
+- **No consume cupo**: las vistas previas no cuentan como descargas y llevan marca de agua, por lo que no sirven como documento final. Tienen su **propio límite** (`RATE_LIMIT_PREVIEW_PER_MINUTE`, 40/min por IP en el editor y por usuario en presupuestos guardados), separado del de descargas.
+- La autorización es la de siempre: sin asignación vigente, la vista previa responde 403 igual que el PDF final.
+
+Alternativas evaluadas: un `<iframe>`/`<object>` con el PDF (no muestra todas las páginas en iOS/Android), y replicar el diseño en HTML (duplica la lógica y deja de ser fiel). Rasterizar el PDF real reutiliza el renderizador existente y es lo más mantenible.
+
+## Plantillas de demostración y PDFs de muestra
+
+Tres plantillas ficticias (taller mecánico, construcción y albañilería, servicios técnicos) en `e2e/fixtures/demo-templates.ts`. `e2e/demo-templates.spec.ts` ejecuta el flujo comercial completo con cuentas de prueba: alta en administración, configuración, vista previa, activación, asignación, inicio de sesión del cliente, selección, carga de datos, descarga del PDF y verificación del límite gratuito (3 por mes; la cuarta devuelve 429; las vistas previas no cuentan).
+
+Los PDF se guardan **localmente** (no se versionan) en `examples/demo-pdfs/`:
+
+| Archivo | Contenido |
+| --- | --- |
+| `taller-mecanico.pdf`, `construccion.pdf`, `servicios-tecnicos.pdf` | Descarga real desde el editor (3 conceptos) |
+| `*-multipagina.pdf` | El mismo diseño con 35 conceptos |
+
+Regenerar: `E2E_PROD=1 pnpm test:e2e e2e/demo-templates.spec.ts --project=desktop`. Estas plantillas **no** son productos comerciales ni se crean en producción.
+
 ## Pendiente
 
-- La edición es por JSON (no hay editor visual de campos); la vista previa del editor de HTML en pantalla no replica el diseño exacto del PDF privado (usa el color de acento).
+- No hay editor visual tipo lienzo: el formulario cubre estilo, secciones y campos; el diseño del documento es el del renderizador genérico.
 - El logo del negocio sigue siendo el del perfil; no hay assets propios por plantilla.
