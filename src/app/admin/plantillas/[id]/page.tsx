@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import { Card, PageHeader } from "@/components/dashboard/ui";
 import { Button } from "@/components/ui/button";
-import { Field, Input, Textarea } from "@/components/ui/fields";
+import { TemplateConfigForm } from "@/components/admin/template-config-form";
+import { Field, Input } from "@/components/ui/fields";
 import { isUuid } from "@/server/api";
 import { CustomTemplateError, getCustomTemplateAdmin } from "@/services/custom-templates";
 import {
@@ -27,11 +28,6 @@ export default async function AdminTemplatePage({
     if (e instanceof CustomTemplateError) notFound();
     throw e;
   });
-  const config = JSON.stringify(
-    { style: template.style, fields: template.fields, sections: template.sections },
-    null,
-    2,
-  );
   const active = template.assignments.filter((a) => !a.revokedAt);
   const history = template.assignments.filter((a) => a.revokedAt);
   const hidden = <input type="hidden" name="id" value={template.id} />;
@@ -77,31 +73,14 @@ export default async function AdminTemplatePage({
 
       <Card className="mb-6">
         <h2 className="mb-3 font-semibold text-ink">Configuración</h2>
-        <form action={saveTemplateAction} className="space-y-3">
-          {hidden}
-          <Field label="Nombre" htmlFor="name">
-            <Input id="name" name="name" defaultValue={template.name} required />
-          </Field>
-          <Field label="Descripción" htmlFor="description">
-            <Textarea id="description" name="description" defaultValue={template.description} />
-          </Field>
-          <Field
-            label="Estilo, campos y secciones (JSON)"
-            htmlFor="config"
-            hint="Solo datos: colores, tipografía (sans/serif/mono), textos de encabezado y pie, campos (text, textarea, number, date, select, checkbox, money) y secciones. Ver docs/custom-templates.md."
-          >
-            <Textarea
-              id="config"
-              name="config"
-              defaultValue={config}
-              spellCheck={false}
-              className="min-h-72 font-mono text-xs"
-            />
-          </Field>
-          <Button type="submit" size="lg" disabled={template.status === "ARCHIVED"}>
-            Guardar cambios
-          </Button>
-        </form>
+        <TemplateConfigForm
+          templateId={template.id}
+          action={saveTemplateAction}
+          name={template.name}
+          description={template.description}
+          config={{ style: template.style, fields: template.fields, sections: template.sections }}
+          disabled={template.status === "ARCHIVED"}
+        />
         {template.status !== "ARCHIVED" && (
           <form action={activateTemplateAction} className="mt-4 border-t border-border pt-4">
             {hidden}

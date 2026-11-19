@@ -1,71 +1,64 @@
 import { parseCustomTemplateConfig } from "@/domain/custom-template/config";
-import { defaultQuote } from "@/domain/quote/defaults";
-import { quoteSchema } from "@/domain/quote/schema";
-import { isUuid, toErrorResponse } from "@/server/api";
+import { isUuid, readJson, toErrorResponse } from "@/server/api";
+import { renderTemplatePreview } from "@/server/admin-preview";
 import { requireAdminApi } from "@/server/auth/admin";
+import { RateLimiter } from "@/server/rate-limit";
 import { CustomTemplateError, getCustomTemplateAdmin } from "@/services/custom-templates";
-import { renderQuotePdf } from "@/services/pdf/render";
 
 export const runtime = "nodejs";
 
-/** Vista previa con datos de ejemplo de la configuración actual (también en borrador). Solo ADMIN. */
-export async function GET(_request: Request, ctx: { params: Promise<{ id: string }> }) {
+const limiter = new RateLimiter(60, 60_000);
+
+function pdfResponse(pdf: Buffer) {
+  return new Response(new Uint8Array(pdf), {
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": 'inline; filename="vista-previa.pdf"',
+      "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+}
+
+async function handle(
+  ctx: { params: Promise<{ id: string }> },
+  readDraft?: () => Promise<unknown>,
+) {
   try {
-    await requireAdminApi();
+    const admin = await requireAdminApi();
+    if (!limiter.check(admin.id).allowed) {
+      return Response.json({ error: "Demasiadas solicitudes." }, { status: 429 });
+    }
     const { id } = await ctx.params;
     if (!isUuid(id)) return Response.json({ error: "No encontrado" }, { status: 404 });
     const template = await getCustomTemplateAdmin(id);
-    const config = parseCustomTemplateConfig({
-      style: template.style,
-      fields: template.fields,
-      sections: template.sections,
-    });
-
-    const q = defaultQuote(new Date());
-    q.title = "Presupuesto de ejemplo";
-    q.issuer = { ...q.issuer, businessName: "Negocio de ejemplo", email: "contacto@ejemplo.com" };
-    q.customer = { ...q.customer, name: "Cliente de ejemplo" };
-    q.items = [1, 2, 3].map((n) => ({
-      id: `i${n}`,
-      description: `Concepto de ejemplo ${n}`,
-      quantity: String(n),
-      unit: "Unidad",
-      unitPrice: "12500",
-      discountPercent: "0",
-    }));
-    const sample: Record<string, string | number | boolean> = {};
-    for (const f of config.fields) {
-      sample[f.id] =
-        f.type === "number" || f.type === "money"
-          ? 1000
-          : f.type === "checkbox"
-            ? true
-            : f.type === "date"
-              ? new Date().toISOString().slice(0, 10)
-              : f.type === "select"
-                ? (f.options?.[0] ?? "Opción")
-                : `Ejemplo: ${f.label}`;
-    }
-    const quote = quoteSchema.parse({ ...q, templateId: id, customFieldValues: sample });
-    const pdf = await renderQuotePdf(quote, {
-      templateId: id,
-      showBrand: false,
-      allowCustomColor: true,
-      preview: true,
-      custom: { name: template.name, ...config },
-    });
-    return new Response(new Uint8Array(pdf), {
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": 'inline; filename="vista-previa.pdf"',
-        "Cache-Control": "no-store",
-        "X-Content-Type-Options": "nosniff",
+    // El cuerpo se lee recién después de verificar el rol de administrador.
+    const draftConfig = readDraft ? await readDraft() : undefined;
+    const config = parseCustomTemplateConfig(
+      draftConfig ?? {
+        style: template.style,
+        fields: template.fields,
+        sections: template.sections,
       },
-    });
+    );
+    return pdfResponse(await renderTemplatePreview(id, template.name, config));
   } catch (error) {
     if (error instanceof CustomTemplateError) {
       return Response.json({ error: "No encontrado" }, { status: 404 });
     }
     return toErrorResponse(error);
   }
+}
+
+/** Vista previa de la configuración guardada (también en borrador). Solo ADMIN. */
+export async function GET(_request: Request, ctx: { params: Promise<{ id: string }> }) {
+  return handle(ctx);
+}
+
+/** Vista previa de una configuración sin guardar (el formulario de administración). Solo ADMIN. */
+export async function POST(request: Request, ctx: { params: Promise<{ id: string }> }) {
+  return handle(
+    ctx,
+    async () => ((await readJson(request, 200_000)) as { config?: unknown }).config ?? {},
+  );
 }

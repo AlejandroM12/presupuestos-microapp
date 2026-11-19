@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import type { UseFormSetValue } from "react-hook-form";
 import { Input, Select, Textarea } from "@/components/ui/fields";
 import type { QuoteDraft } from "@/domain/quote/schema";
@@ -16,6 +17,18 @@ interface Props {
 
 /** Campos definidos por la plantilla privada elegida; se guardan en `customFieldValues`. */
 export function CustomFieldsSection({ template, values, setValue, disabled }: Props) {
+  // Valores predeterminados de la plantilla: se aplican una vez a los campos todavía vacíos.
+  useEffect(() => {
+    const missing = template.fields.filter(
+      (f) => f.defaultValue !== undefined && values[f.id] === undefined,
+    );
+    if (missing.length === 0) return;
+    const defaults = Object.fromEntries(
+      missing.map((f) => [f.id, f.defaultValue as string | number | boolean]),
+    );
+    setValue("customFieldValues", { ...values, ...defaults }, { shouldDirty: true });
+  }, [template, values, setValue]);
+
   const sections = [...template.sections].sort((a, b) => a.position - b.position);
   const fields = [...template.fields].sort((a, b) => a.position - b.position);
   if (fields.length === 0) return null;
