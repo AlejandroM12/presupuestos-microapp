@@ -41,7 +41,7 @@ async function newUser(browser: Browser, tag: string, next = "/dashboard") {
   return { page, email };
 }
 
-function apiQuote(demo: DemoTemplate, templateId: string, itemCount = 3) {
+function apiQuote(demo: DemoTemplate, templateId: string, itemCount = 6) {
   return {
     number: "0001",
     date: "2026-11-19",
@@ -55,14 +55,18 @@ function apiQuote(demo: DemoTemplate, templateId: string, itemCount = 3) {
     paymentTerms: "50% al aprobar, 50% al finalizar",
     issuer: { businessName: demo.businessName },
     customer: { name: demo.customerName },
-    items: Array.from({ length: itemCount }, (_, i) => ({
-      id: `i${i}`,
-      description: `Concepto de demostración ${i + 1}`,
-      quantity: "1",
-      unit: "Unidad",
-      unitPrice: String(12000 + i * 350),
-      discountPercent: "0",
-    })),
+    items: Array.from({ length: itemCount }, (_, i) => {
+      const it = demo.items[i % demo.items.length];
+      return {
+        id: `i${i}`,
+        description:
+          itemCount > demo.items.length ? `${it.description} (ítem ${i + 1})` : it.description,
+        quantity: it.quantity,
+        unit: it.unit,
+        unitPrice: it.unitPrice,
+        discountPercent: it.discountPercent ?? "0",
+      };
+    }),
     globalDiscount: { type: "percent", value: "0" },
     surcharge: { type: "percent", value: "0" },
     taxes: [{ id: "iva", label: "IVA", type: "percent", value: "21" }],
@@ -123,8 +127,8 @@ test.describe("plantillas de demostración (flujo comercial completo)", () => {
       await client.getByLabel("Nombre comercial").fill(demo.businessName);
       await client.getByLabel("Nombre", { exact: true }).fill(demo.customerName);
       await client.getByLabel("Título").fill(demo.title);
-      await client.getByLabel("Descripción", { exact: true }).fill("Mano de obra y materiales");
-      await client.getByLabel("Precio unitario").fill("15000");
+      await client.getByLabel("Descripción", { exact: true }).fill(demo.items[0].description);
+      await client.getByLabel("Precio unitario").fill(demo.items[0].unitPrice);
       await client.getByRole("radio", { name: demo.name }).click();
       for (const [label, value] of Object.entries(demo.fill)) {
         await client.getByLabel(label, { exact: false }).first().fill(value);

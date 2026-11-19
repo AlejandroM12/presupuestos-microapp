@@ -94,6 +94,11 @@ test("configuración por formulario: campos, secciones, orden, validación y ver
   await admin.getByLabel("Título del documento").fill("Orden de prueba");
   await admin.getByLabel("Color en formato hexadecimal").fill("#0f766e");
   await admin.getByLabel("Tipografía").selectOption("serif");
+  await admin.getByLabel("Encabezado", { exact: true }).selectOption("banner");
+  await admin.getByLabel("Tabla de conceptos").selectOption("zebra");
+  await admin.getByLabel("Totales", { exact: true }).selectOption("box");
+  await admin.getByLabel("Columnas de los campos").selectOption("2");
+  await admin.getByLabel("Incluir bloque de aprobación").check();
 
   // Sección y campos
   await admin.getByRole("button", { name: "Agregar sección" }).click();
@@ -102,6 +107,7 @@ test("configuración por formulario: campos, secciones, orden, validación y ver
   await admin.getByLabel("Etiqueta", { exact: true }).first().fill("Patente");
   await admin.getByLabel("Valor predeterminado").first().fill("ZZ000ZZ");
   await admin.getByLabel("Obligatorio").first().check();
+  await admin.getByLabel("Ficha destacada").first().check();
   await admin
     .getByLabel("Sección", { exact: true })
     .first()
@@ -141,6 +147,16 @@ test("configuración por formulario: campos, secciones, orden, validación y ver
     ),
   );
   expect(stored).toContain('"id":"patente"');
+  const style = await db(async (c) =>
+    JSON.stringify(
+      (await c.query(`SELECT style FROM custom_templates WHERE id=$1`, [templateId])).rows[0].style,
+    ),
+  );
+  expect(style).toContain('"headerVariant":"banner"');
+  expect(style).toContain('"tableStyle":"zebra"');
+  expect(style).toContain('"totalsStyle":"box"');
+  expect(style).toContain('"approval":true');
+  expect(stored).toContain('"highlight":true');
 
   // Eliminar un campo
   await admin.getByRole("button", { name: "Eliminar campo 1" }).click();
