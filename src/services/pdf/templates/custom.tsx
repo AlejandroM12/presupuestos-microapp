@@ -320,7 +320,12 @@ export function CustomDocument({ m }: { m: PdfModel }) {
         )}
 
         {custom.blocks.map((b, bi) => (
-          <View key={`${b.title}-${bi}`} wrap={false} style={{ marginTop: 14 }}>
+          <View
+            key={`${b.title}-${bi}`}
+            // Un bloque corto no se parte; uno con texto extenso fluye entre páginas para no recortarse.
+            wrap={b.rows.some((r) => r.value.length > 700)}
+            style={{ marginTop: 14 }}
+          >
             {b.title ? <Text style={s.blockTitle}>{b.title}</Text> : null}
             {b.columns === 2 ? (
               <View style={{ flexDirection: "row", flexWrap: "wrap" }}>

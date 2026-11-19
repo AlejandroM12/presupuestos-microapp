@@ -172,6 +172,23 @@ describe("plantillas privadas: estructura declarativa", () => {
     );
   });
 
+  it("un campo personalizado muy extenso fluye entre páginas sin perder texto", async () => {
+    const doc = demoDocument("taller-mecanico", 14);
+    doc.quote.customFieldValues = {
+      ...doc.quote.customFieldValues,
+      diagnostico: "Diagnóstico extenso. ".repeat(120),
+    };
+    const pdf = await renderQuotePdf(doc.quote, {
+      templateId: DEMO_TEMPLATE_ID,
+      showBrand: false,
+      allowCustomColor: true,
+      custom: doc.config,
+    });
+    const pages = await extractPdfPages(pdf);
+    expect(pages.join(" ").match(/Diagnóstico extenso\./g)).toHaveLength(120);
+    pages.forEach((t, i) => expect(t).toContain(`Página ${i + 1} de ${pages.length}`));
+  }, 60_000);
+
   it("sin la configuración nueva se mantiene el diseño original (compatibilidad)", async () => {
     const { parseCustomTemplateConfig } = await import("@/domain/custom-template/config");
     const legacy = parseCustomTemplateConfig({
