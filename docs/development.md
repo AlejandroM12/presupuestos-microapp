@@ -46,7 +46,18 @@ pnpm build && E2E_PROD=1 pnpm test:e2e
 
 Playwright levanta el servidor con la base de pruebas y secretos de prueba (ver `playwright.config.ts`) y limpia las cuentas `@e2e.example` al terminar.
 
+### Pruebas omitidas (a propósito)
+
+Un resumen "N skipped" **no** indica pruebas rotas ni deshabilitadas por problemas:
+
+| Prueba | Cantidad | Motivo |
+| --- | --- | --- |
+| Vitest: utilidades de volcado de PDF (`render.test.ts`, `custom-render.test.ts`, `pagination.test.ts`) | 3 | No son aserciones: son generadores de muestras que se activan con `PDF_DUMP_DIR` / `PDF_SAMPLES_DIR`. Sin esas variables no hacen nada. |
+| Vitest: pruebas de integración con PostgreSQL | 0 con `TEST_DATABASE_URL`; todas si falta | Requieren la base de pruebas (ver arriba). En CI siempre se ejecutan. |
+| Playwright: flujo completo de demostración en mobile (`demo-templates.spec.ts`) | 3 | `test.skip(isMobile)`: el alta en administración y la descarga se validan en desktop; la vista previa fiel, los formularios y el responsive de las plantillas privadas sí se prueban en mobile (`template-admin-form.spec.ts`, `commercial-cta.spec.ts`). |
+
 ## Utilidades
 
-- Volcar PDFs de muestra: `PDF_DUMP_DIR=<carpeta> pnpm test pdf` y rasterizarlos con `node scripts/pdf-to-png.mjs <carpeta>`.
+- Volcar PDFs de muestra de las plantillas del catálogo: `PDF_DUMP_DIR=<carpeta> pnpm test pdf` y rasterizarlos con `node scripts/pdf-to-png.mjs <carpeta>`.
+- Muestras comerciales (`DEMO-*`) y casos extremos: `PDF_SAMPLES_DIR=examples/demo-pdfs pnpm exec vitest run src/services/pdf/pagination.test.ts -t volcado`; para revisarlas como imágenes, `node scripts/pdf-to-png.mjs <carpeta>` y `node scripts/contact-sheet.mjs <salida.png> <imágenes…>`. Los PDF de los E2E se guardan en `examples/e2e-pdfs/`. Todo `examples/` está fuera de Git.
 - Los precios se configuran en `src/lib/config/plans.ts` (o `PRICE_*_ARS`).

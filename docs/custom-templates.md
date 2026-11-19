@@ -29,6 +29,7 @@ La plantilla es **solo datos** validados con Zod (`src/domain/custom-template/co
     "headerVariant": "classic | banner | boxed",
     "tableStyle": "tinted | lines | zebra | grid",
     "totalsStyle": "bar | box | plain",
+    "density": "standard | compact",
     "sectionColumns": 1,
     "showTerms": true,
     "approval": false,
@@ -55,6 +56,7 @@ Un solo renderizador genérico (`templates/custom.tsx`) compone el documento a p
 | `style.headerVariant` | `classic` (por defecto), `banner`, `boxed` | Encabezado: logo y datos a la izquierda; banda de color a todo el ancho (el logo va en una caja blanca); o ficha del documento a la derecha |
 | `style.tableStyle` | `tinted` (por defecto), `lines`, `zebra`, `grid` | Tabla: encabezado con fondo suave; solo líneas; encabezado de color con filas alternadas; cuadrícula |
 | `style.totalsStyle` | `bar` (por defecto), `box`, `plain` | Totales: barra de color, recuadro o línea simple |
+| `style.density` | `standard` (por defecto), `compact` | Compacta reduce márgenes internos, espaciados y alturas de bloques (≈35 %) y baja un poco la tipografía base; no fuerza una sola página y mantiene los tamaños mínimos legibles |
 | `style.sectionColumns` / `sections[].columns` | `1` (por defecto) o `2` | Distribución de los campos de las secciones (los textos largos ocupan todo el ancho) |
 | `style.showTerms` | `true` (por defecto) | Muestra observaciones y condiciones comerciales |
 | `style.approval`, `approvalText` | `false` (por defecto) | Bloque de aprobación con firma, aclaración y fecha |
@@ -104,23 +106,30 @@ Alternativas evaluadas: un `<iframe>`/`<object>` con el PDF (no muestra todas la
 
 - **Un encabezado de tabla por página**, sin grupos artificiales de filas: las filas son indivisibles y se llenan según la altura real. El encabezado de la primera página va en línea; en las siguientes se repite arriba una única vez (`PaginatedTable`, `src/services/pdf/pagination.tsx`).
 - **Sin páginas huérfanas**: la última fila viaja con los totales y las condiciones, de modo que ninguna página queda con un encabezado sin filas ni solo con totales. Si el cierre es muy extenso (más de ~3.200 caracteres de observaciones y condiciones) fluye libremente para no recortar texto.
-- **Encabezado compacto de continuación** desde la página 2: negocio, "Presupuesto N.º …", fecha y cliente; la numeración "Página X de Y" se mantiene.
+- **Encabezado compacto de continuación** desde la página 2: negocio, tipo de documento (el configurado en `headerTitle`, p. ej. "Orden de trabajo N.º …"; "Presupuesto" por defecto), fecha y cliente; la numeración "Página X de Y" se mantiene.
+- **Moderno**: el panel lateral pasa a ser un bloque en la parte superior de la primera página; la tabla y el resto usan todo el ancho en todas las páginas (sin barra vacía al continuar).
+- **Cantidades y unidades** (`src/domain/quote/units.ts`): "1 unidad", "2 unidades", "3 m", "38 m²", "12 bolsas", "80.450 km". Solo se normalizan unidades conocidas (se pluralizan las de conteo y se abrevian las de medida); las **unidades personalizadas se respetan tal como se escribieron**. Los números usan coma decimal y separador de miles desde 10.000.
+- Una sección con un único campo del mismo nombre no repite su título.
 - Nota técnica: react-pdf no dibuja el texto de elementos `render` que heredan el interlineado de la página; por eso el contenedor fija el suyo (ver comentario en `pagination.tsx`).
 - Prueba `pagination.test.ts`: 1, 5, 10, 35 y 100 conceptos en las seis plantillas del catálogo y las tres demostraciones (un encabezado por página con filas, ninguno en páginas sin filas, totales una sola vez en la última, todos los conceptos en orden, numeración y aviso legal en todas).
 
 ## Plantillas de demostración y PDFs de muestra
 
-Tres plantillas ficticias con identidad, logo y datos inventados (taller mecánico: encabezado en ficha, cuadrícula, recuadro de totales y autorización; construcción: banda de color, líneas, anticipo y saldo, conformidad del propietario; servicios técnicos: clásico, filas alternadas y barra de totales). Definición en `src/services/pdf/demo-data.ts`; Playwright las usa en `e2e/demo-templates.spec.ts` (alta en administración, configuración, vista previa, activación, asignación, cliente, descarga y límite gratuito).
+Tres plantillas ficticias con identidad, logo y datos inventados (taller mecánico: encabezado en ficha, cuadrícula, recuadro de totales y autorización; construcción: banda de color, líneas, anticipo y saldo, conformidad del propietario; servicios técnicos: clásico, filas alternadas y barra de totales). Definición en `src/services/pdf/demo-data.ts` y `demo-fixtures.ts`. **Todos los documentos de demostración llevan en el pie de cada página la leyenda "MUESTRA DE DEMOSTRACIÓN · datos ficticios"** y los archivos destinados a difusión se llaman `DEMO-*`.
+
+En USD (`DEMO_USD`) los precios están cargados a mano en dólares con valores plausibles (relación implícita con los pesos de 1.000–1.800 por dólar, verificada por prueba); **no hay conversión automática de moneda**: cada presupuesto se emite en una sola moneda.
 
 Los PDF se guardan **localmente** (no se versionan) en `examples/demo-pdfs/`:
 
 | Archivo | Contenido |
 | --- | --- |
-| `taller-mecanico.pdf`, `construccion.pdf`, `servicios-tecnicos.pdf` | Muestras comerciales (datos, conceptos y precios coherentes) |
-| `*-multipagina.pdf` | La misma identidad con 35 conceptos |
-| `casos-extremos/` | 1, 5, 10 y 100 conceptos; nombres y textos largos; campos personalizados extensos; opcionales vacíos; sin condiciones comerciales; USD con descuento, recargo e impuestos; logos de distintas proporciones; las seis plantillas del catálogo con 35 conceptos |
+| `DEMO-<plantilla>.pdf` | Muestra comercial estándar (taller-mecanico, construccion, servicios-tecnicos) |
+| `DEMO-<plantilla>-compacto.pdf` | La misma muestra con `density: compact` |
+| `DEMO-<plantilla>-usd.pdf` | Variante en USD |
+| `DEMO-<plantilla>-multipagina.pdf` | 35 conceptos |
+| `casos-extremos/` (**separado**) | 1, 5, 10 y 100 conceptos; 35 conceptos en modo compacto; nombres y textos largos; campos extensos; opcionales vacíos; sin condiciones comerciales; USD con descuento, recargo e impuestos; logos de distintas proporciones; las seis plantillas del catálogo con 35 conceptos |
 
-Regenerar: `PDF_SAMPLES_DIR=examples/demo-pdfs pnpm exec vitest run src/services/pdf/pagination.test.ts -t volcado` (y `node scripts/pdf-to-png.mjs <carpeta>` + `node scripts/contact-sheet.mjs` para revisarlos como imágenes). Estas plantillas **no** son productos comerciales ni se crean en producción.
+Playwright (`e2e/demo-templates.spec.ts`) recorre el flujo comercial completo y guarda sus descargas en `examples/e2e-pdfs/`. Regenerar las muestras: ver `docs/development.md`. Estas plantillas **no** son productos comerciales ni se crean en producción.
 
 ## Pendiente
 
