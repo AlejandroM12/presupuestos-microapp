@@ -13,6 +13,13 @@ export class WrongPasswordError extends Error {
   }
 }
 
+/** Los administradores conservan su cuenta mientras tengan el rol: protege la auditoría. */
+export class AdminAccountError extends Error {
+  constructor() {
+    super("Una cuenta con rol de administrador no puede eliminarse");
+  }
+}
+
 export const nameSchema = z.string().trim().max(120, "Nombre demasiado largo");
 
 export async function updateName(userId: string, name: unknown) {
@@ -57,6 +64,8 @@ export async function changePassword(userId: string, current: string, next: unkn
  */
 export async function deleteAccount(userId: string, password: string) {
   await verifyCurrent(userId, password);
+  const role = await db.user.findUnique({ where: { id: userId }, select: { role: true } });
+  if (role?.role === "ADMIN") throw new AdminAccountError();
 
   const gateway = getGateway();
   if (gateway) {

@@ -11,6 +11,7 @@ import {
   deleteAccount,
   nameSchema,
   updateName,
+  AdminAccountError,
   WrongPasswordError,
 } from "@/services/account";
 import { z } from "zod";
@@ -79,6 +80,12 @@ export async function deleteAccountAction(
   } catch (error) {
     if (error instanceof WrongPasswordError) {
       return { errors: { password: "La contraseña no es correcta." } };
+    }
+    if (error instanceof AdminAccountError) {
+      return {
+        message:
+          "Esta cuenta tiene rol de administrador. Pedí que se lo quiten antes de eliminarla.",
+      };
     }
     throw error;
   }

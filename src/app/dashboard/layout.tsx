@@ -3,12 +3,14 @@ import { LogOut } from "lucide-react";
 import { Logo } from "@/components/marketing/logo";
 import { DashboardNav } from "@/components/dashboard/nav";
 import { Button } from "@/components/ui/button";
+import { isAdmin } from "@/server/auth/admin";
 import { requireUserWithEntitlements } from "@/server/pro";
 import { signOutAction } from "../(auth)/actions";
 
 /** Todo /dashboard exige sesión: se valida en el servidor en cada solicitud. */
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, entitlements } = await requireUserWithEntitlements("/dashboard");
+  const admin = await isAdmin(user.id);
   const plan = entitlements.proActive
     ? "Pro"
     : entitlements.ownsPremiumPack
@@ -20,6 +22,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <header className="flex h-16 items-center justify-between gap-3">
         <Logo />
         <div className="flex items-center gap-2 sm:gap-3">
+          {admin && (
+            <Link
+              href="/admin/plantillas"
+              className="text-xs font-medium text-brand hover:underline"
+            >
+              Administración
+            </Link>
+          )}
           <Link
             href="/dashboard/plan"
             className="rounded-full border border-border bg-white px-3 py-1 text-xs font-medium text-ink"

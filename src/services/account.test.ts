@@ -6,6 +6,7 @@ import { db } from "@/server/db";
 import { deleteTestUsers } from "@/test/cleanup";
 import {
   changePassword,
+  AdminAccountError,
   deleteAccount,
   exportUserData,
   updateName,
@@ -127,5 +128,19 @@ describe.skipIf(!enabled)("cuenta del usuario (PostgreSQL)", () => {
     expect(String(kept.amount)).toBe("9900");
     // los datos de otros usuarios no se tocan
     expect(await db.user.count({ where: { id: otherId } })).toBe(1);
+  });
+
+  it("una cuenta con rol de administrador no puede eliminarse", async () => {
+    const admin = await db.user.create({
+      data: {
+        email: `adm${DOMAIN}`,
+        passwordHash: await hashPassword("admin-clave-1"),
+        role: "ADMIN",
+      },
+    });
+    await expect(deleteAccount(admin.id, "admin-clave-1")).rejects.toBeInstanceOf(
+      AdminAccountError,
+    );
+    expect(await db.user.count({ where: { id: admin.id } })).toBe(1);
   });
 });
