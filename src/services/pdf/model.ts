@@ -1,5 +1,6 @@
 import { calculateTotals } from "@/domain/quote/calculations";
 import { D } from "@/domain/quote/decimal";
+import { formatCount, formatQuantity } from "@/domain/quote/units";
 import { validUntil } from "@/domain/quote/defaults";
 import type { Quote } from "@/domain/quote/schema";
 import type { Currency, QuoteTotals } from "@/domain/quote/types";
@@ -90,16 +91,6 @@ export interface PdfModel {
   };
 }
 
-const groupedFormat = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 2 });
-const plainFormat = new Intl.NumberFormat("es-AR", {
-  maximumFractionDigits: 2,
-  useGrouping: false,
-});
-/** Separador de miles solo desde 10.000: un año (2021) o un código no deben verse como "2.021". */
-const numberFormat = {
-  format: (n: number) => (Math.abs(n) >= 10000 ? groupedFormat : plainFormat).format(n),
-};
-
 function formatFieldValue(
   f: CustomFieldConfig,
   v: string | number | boolean | null | undefined,
@@ -113,7 +104,7 @@ function formatFieldValue(
       return money(String(v));
     case "number": {
       const n = Number(v);
-      const text = Number.isFinite(n) ? numberFormat.format(n) : String(v);
+      const text = Number.isFinite(n) ? formatCount(n) : String(v);
       return f.unit ? `${text} ${f.unit}` : text;
     }
     case "date":
@@ -168,9 +159,22 @@ export function buildCustomView(
   // Las fichas se reúnen primero para respetar el orden aunque estén en secciones distintas.
   const bySection = sections.map((s) => ({ s, rows: rowsOf(inSection(s.id)) }));
   const looseRows = rowsOf(loose);
+  const norm = (t: string) =>
+    t
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
   for (const { s, rows } of bySection) {
     if (rows.length > 0) {
-      blocks.push({ title: s.title, columns: s.columns ?? config.style.sectionColumns, rows });
+      // Una sección con un único campo del mismo nombre no repite el título.
+      const redundant = rows.length === 1 && norm(rows[0].label) === norm(s.title);
+      blocks.push({
+        title: redundant ? "" : s.title,
+        columns: s.columns ?? config.style.sectionColumns,
+        rows,
+      });
     }
   }
   if (looseRows.length > 0) {
@@ -196,7 +200,7 @@ export function buildPdfModel(quote: Quote, options: PdfRenderOptions): PdfModel
 
   const rows: PdfItemRow[] = quote.items.map((item, i) => ({
     description: item.description,
-    quantity: `${item.quantity.replace(".", ",")} ${item.unit}`,
+    quantity: formatQuantity(item.quantity, item.unit),
     unit: item.unit,
     unitPrice: money(item.unitPrice.replace(",", ".")),
     discount: Number(item.discountPercent.replace(",", ".")) > 0 ? `${item.discountPercent}%` : "—",

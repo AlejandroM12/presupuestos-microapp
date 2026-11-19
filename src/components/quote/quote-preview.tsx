@@ -1,4 +1,5 @@
 import { validUntil } from "@/domain/quote/defaults";
+import { formatQuantity } from "@/domain/quote/units";
 import type { QuoteDraft } from "@/domain/quote/schema";
 import type { QuoteTotals } from "@/domain/quote/types";
 import { formatDateAr, formatMoney } from "@/lib/format";
@@ -108,7 +109,7 @@ export function QuotePreview({ quote, totals }: Props) {
                   {item.description || <span className="text-slate-300">Concepto</span>}
                 </td>
                 <td className="py-2 text-right font-mono whitespace-nowrap">
-                  {item.quantity} {item.unit}
+                  {formatQuantity(item.quantity, item.unit)}
                 </td>
                 <td className="py-2 text-right font-mono">
                   {money(String(item.unitPrice || "0").replace(",", "."))}
