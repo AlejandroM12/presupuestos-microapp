@@ -18,8 +18,8 @@ Estado real de cada punto, con evidencia. Estados: **Implementado**, **Probado l
 | Encabezados de seguridad / CSP | **Verificado en producción** | CSP, HSTS, nosniff, COOP en respuestas HTTPS |
 | Pack Premium: 20 descargas/mes | Probado localmente | `LIMITS.premiumPackMonthlyDownloads`; tests de entitlements; textos y legales alineados |
 | Plantillas personalizadas: sección comercial + WhatsApp | Probado localmente | Landing + FAQ; enlace `wa.me` solo si `ATAJOLAB_WHATSAPP_E164` está definido (si no, correo) |
-| Plantillas privadas (modelo, versionado, asignaciones, campos, PDF) | Probado localmente | Vitest con PostgreSQL (`custom-templates.test.ts`), PDF con campos y multipágina; revisión visual |
-| Administración (`/admin`, roles, auditoría, vista previa PDF) | Probado localmente | E2E `private-templates.spec.ts` (desktop y mobile): 404 a no admin, rol revocado surte efecto al instante, aislamiento entre cuentas |
+| Plantillas privadas (modelo, versionado, asignaciones, campos, PDF) | Probado localmente · **Verificado en producción** (smoke 2026-11-19) | Vitest con PostgreSQL, PDF con campos y multipágina, revisión visual; en producción: alta, activación, asignación, PDF 200 a la cuenta asignada, 403 a otra, 422 con campo obligatorio faltante |
+| Administración (`/admin`, roles, auditoría, vista previa PDF) | Probado localmente · **Verificado en producción** (smoke 2026-11-19) | E2E `private-templates.spec.ts` (desktop y mobile); en producción: 404 a anónimo y usuario común, vista previa PDF solo admin, revocación inmediata (403), auditoría registrada |
 | Rate limiting | Implementado | Una réplica. Ver `docs/security-audit.md` |
 | Auditoría de seguridad (código) | Completada localmente | `docs/security-audit.md` |
 
@@ -55,9 +55,14 @@ Estado real de cada punto, con evidencia. Estados: **Implementado**, **Probado l
 | Rollback | Implementado | Script listo; no ejercitado aún en un fallo real |
 | Despliegue automático desde CI | No activado | A propósito |
 
-## Plantillas privadas: estado de despliegue
+## Despliegue de la versión con plantillas privadas (2026-11-19)
 
-Ver el estado vigente en la sección "Despliegue de esta versión" del informe de la sesión y en `docs/custom-templates.md` (procedimiento para crear y asignar). Ninguna cuenta es ADMIN por defecto: el primer administrador se otorga manualmente con un `UPDATE` controlado.
+- Imagen `latest` construida por GitHub Actions (CI y Docker en verde sobre `ed01247`). Backup verificado antes de migrar y migración `20261117223748_custom_templates_and_admin` aplicada (6 migraciones en total).
+- Solo se recreó `presupuestos-app`; `presupuestos-db` y los contenedores de Agendia no se tocaron (Agendia responde 200).
+- Rollback preparado: la imagen anterior quedó etiquetada localmente como `rollback-20261119` (`TAG=rollback-20261119 docker compose up -d app`). La migración es aditiva (tablas y columnas nuevas), compatible con la versión anterior.
+- Smoke real con cuentas descartables, limpiadas al terminar: 14 verificaciones correctas.
+- No hay ninguna cuenta ADMIN ni plantilla creada en producción: el primer administrador se otorga manualmente (ver `docs/custom-templates.md`).
+- `ATAJOLAB_WHATSAPP_E164` **no está definido** en producción: los botones de la landing usan el correo como alternativa hasta que se configure el número comercial.
 
 ## Modalidad actual
 
