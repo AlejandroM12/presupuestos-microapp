@@ -35,6 +35,9 @@ export function CustomDocument({ m }: { m: PdfModel }) {
   const accent = m.accent;
   const onAccent = readableOn(accent);
   const soft = tint(accent, 0.1);
+  const compact = st.density === "compact";
+  /** Escala de espaciados: la densidad compacta reduce márgenes y alturas (la tipografía casi no cambia). */
+  const sp = (n: number) => (compact ? Math.round(n * 0.65) : n);
   const zebra = st.tableStyle === "zebra";
   const grid = st.tableStyle === "grid";
 
@@ -44,7 +47,7 @@ export function CustomDocument({ m }: { m: PdfModel }) {
       paddingHorizontal: PAGE_PADDING,
       paddingBottom: 84,
       fontFamily: font,
-      fontSize: 9.5,
+      fontSize: compact ? 9 : 9.5,
       color: INK,
       lineHeight: 1.4,
     },
@@ -62,7 +65,7 @@ export function CustomDocument({ m }: { m: PdfModel }) {
       color: MUTED,
       marginBottom: 3,
     },
-    title: { fontSize: 14, fontWeight: 600, lineHeight: 1.25, marginTop: 18 },
+    title: { fontSize: 14, fontWeight: 600, lineHeight: 1.25, marginTop: sp(18) },
     blockTitle: {
       fontSize: 8.5,
       letterSpacing: 1.2,
@@ -76,12 +79,12 @@ export function CustomDocument({ m }: { m: PdfModel }) {
       backgroundColor: soft,
       borderWidth: 1,
       borderColor: tint(accent, 0.35),
-      padding: 8,
+      padding: sp(8),
     },
     cardValue: { fontSize: 13, fontWeight: 700, lineHeight: 1.25 },
     head: {
       flexDirection: "row",
-      paddingVertical: 6,
+      paddingVertical: sp(6),
       paddingHorizontal: 5,
       backgroundColor: zebra ? accent : st.tableStyle === "lines" ? undefined : tint(accent, 0.12),
       borderBottomWidth: st.tableStyle === "lines" ? 1.5 : 0,
@@ -99,7 +102,7 @@ export function CustomDocument({ m }: { m: PdfModel }) {
     },
     row: {
       flexDirection: "row",
-      paddingVertical: 6,
+      paddingVertical: sp(6),
       paddingHorizontal: 5,
       borderBottomWidth: 1,
       borderBottomColor: LINE,
@@ -110,7 +113,7 @@ export function CustomDocument({ m }: { m: PdfModel }) {
     cPrice: { width: 78, textAlign: "right" },
     cDisc: { width: 38, textAlign: "right" },
     cAmount: { width: 84, textAlign: "right" },
-    totals: { marginTop: 14, alignSelf: "flex-end", width: 240 },
+    totals: { marginTop: sp(14), alignSelf: "flex-end", width: 240 },
     totalRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 2 },
     noteLabel: {
       fontSize: 7.5,
@@ -123,7 +126,7 @@ export function CustomDocument({ m }: { m: PdfModel }) {
   });
 
   const totalsBox =
-    st.totalsStyle === "box" ? { borderWidth: 1.2, borderColor: accent, padding: 10 } : {};
+    st.totalsStyle === "box" ? { borderWidth: 1.2, borderColor: accent, padding: sp(10) } : {};
   const grand =
     st.totalsStyle === "bar"
       ? {
@@ -188,7 +191,7 @@ export function CustomDocument({ m }: { m: PdfModel }) {
         style={{
           marginHorizontal: -PAGE_PADDING,
           paddingHorizontal: PAGE_PADDING,
-          paddingVertical: 22,
+          paddingVertical: sp(22),
           backgroundColor: accent,
           flexDirection: "row",
           justifyContent: "space-between",
@@ -208,7 +211,7 @@ export function CustomDocument({ m }: { m: PdfModel }) {
       </View>
     ) : st.headerVariant === "boxed" ? (
       <View
-        style={{ marginTop: 26, flexDirection: "row", justifyContent: "space-between" }}
+        style={{ marginTop: sp(26), flexDirection: "row", justifyContent: "space-between" }}
         wrap={false}
       >
         {issuerBlock()}
@@ -233,7 +236,7 @@ export function CustomDocument({ m }: { m: PdfModel }) {
     ) : (
       <View
         style={{
-          marginTop: 26,
+          marginTop: sp(26),
           flexDirection: "row",
           justifyContent: "space-between",
           alignItems: "flex-start",
@@ -251,14 +254,17 @@ export function CustomDocument({ m }: { m: PdfModel }) {
     );
 
   const approval = st.approval ? (
-    <View wrap={false} style={{ marginTop: 18, borderWidth: 1, borderColor: GRID, padding: 12 }}>
-      <Text style={[s.blockTitle, { marginBottom: 14 }]}>
+    <View
+      wrap={false}
+      style={{ marginTop: sp(18), borderWidth: 1, borderColor: GRID, padding: sp(12) }}
+    >
+      <Text style={[s.blockTitle, { marginBottom: sp(14) }]}>
         {st.approvalText || "Aprobación del cliente"}
       </Text>
       <View style={{ flexDirection: "row", gap: 18 }}>
         {["Firma", "Aclaración", "Fecha"].map((l, i) => (
           <View key={l} style={{ flex: i === 2 ? 0.7 : 1 }}>
-            <View style={{ borderBottomWidth: 1, borderBottomColor: INK, height: 22 }} />
+            <View style={{ borderBottomWidth: 1, borderBottomColor: INK, height: sp(22) }} />
             <Text style={[s.label, { marginTop: 3, marginBottom: 0 }]}>{l}</Text>
           </View>
         ))}
@@ -283,11 +289,14 @@ export function CustomDocument({ m }: { m: PdfModel }) {
           color={INK}
           muted={MUTED}
           accent={accent}
-          style={{ marginTop: 18 }}
+          docLabel={docTitle}
+          style={{ marginTop: sp(18) }}
         />
 
         {header}
-        <View style={{ height: 1, backgroundColor: accent, marginTop: 16, marginBottom: 14 }} />
+        <View
+          style={{ height: 1, backgroundColor: accent, marginTop: sp(16), marginBottom: sp(14) }}
+        />
 
         <View style={{ flexDirection: "row", justifyContent: "space-between" }} wrap={false}>
           <View style={{ maxWidth: 270 }}>
@@ -309,7 +318,7 @@ export function CustomDocument({ m }: { m: PdfModel }) {
         {q.description ? <Text style={[s.muted, { marginTop: 4 }]}>{q.description}</Text> : null}
 
         {custom.highlights.length > 0 && (
-          <View wrap={false} style={{ flexDirection: "row", gap: 8, marginTop: 14 }}>
+          <View wrap={false} style={{ flexDirection: "row", gap: 8, marginTop: sp(14) }}>
             {custom.highlights.map((h) => (
               <View key={h.label} style={s.card}>
                 <Text style={s.label}>{h.label}</Text>
@@ -324,7 +333,7 @@ export function CustomDocument({ m }: { m: PdfModel }) {
             key={`${b.title}-${bi}`}
             // Un bloque corto no se parte; uno con texto extenso fluye entre páginas para no recortarse.
             wrap={b.rows.some((r) => r.value.length > 700)}
-            style={{ marginTop: 14 }}
+            style={{ marginTop: sp(14) }}
           >
             {b.title ? <Text style={s.blockTitle}>{b.title}</Text> : null}
             {b.columns === 2 ? (
@@ -332,7 +341,11 @@ export function CustomDocument({ m }: { m: PdfModel }) {
                 {b.rows.map((r) => (
                   <View
                     key={r.label}
-                    style={{ width: r.wide ? "100%" : "50%", paddingRight: 10, paddingBottom: 5 }}
+                    style={{
+                      width: r.wide ? "100%" : "50%",
+                      paddingRight: 10,
+                      paddingBottom: sp(5),
+                    }}
                   >
                     <Text style={[s.label, { marginBottom: 1 }]}>{r.label}</Text>
                     <Text>{r.value}</Text>
@@ -358,7 +371,7 @@ export function CustomDocument({ m }: { m: PdfModel }) {
         ))}
 
         <PaginatedTable
-          gap={16}
+          gap={sp(16)}
           rows={m.rows}
           keepClosing={closingTextLength(m) <= CLOSING_MAX}
           head={
@@ -431,7 +444,7 @@ export function CustomDocument({ m }: { m: PdfModel }) {
               </View>
 
               {st.showTerms && (
-                <View style={{ marginTop: 14 }}>
+                <View style={{ marginTop: sp(14) }}>
                   {termsBlocks(m).map((b) => (
                     <NoteBlock
                       key={b.label}

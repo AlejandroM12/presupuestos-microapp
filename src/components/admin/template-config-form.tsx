@@ -79,6 +79,7 @@ interface StyleDraft {
   headerVariant: keyof typeof HEADER_LABELS;
   tableStyle: keyof typeof TABLE_LABELS;
   totalsStyle: keyof typeof TOTALS_LABELS;
+  density: "standard" | "compact";
   sectionColumns: "1" | "2";
   showTerms: boolean;
   approval: boolean;
@@ -144,6 +145,7 @@ function fromConfig(raw: RawConfig): Draft {
       headerVariant: raw.style?.headerVariant ?? "classic",
       tableStyle: raw.style?.tableStyle ?? "tinted",
       totalsStyle: raw.style?.totalsStyle ?? "bar",
+      density: raw.style?.density ?? "standard",
       sectionColumns: String(raw.style?.sectionColumns ?? 1) as "1" | "2",
       showTerms: raw.style?.showTerms ?? true,
       approval: raw.style?.approval ?? false,
@@ -565,6 +567,16 @@ export function TemplateConfigForm({
                     {l}
                   </option>
                 ))}
+              </Select>
+            </Field>
+            <Field label="Densidad" htmlFor="density">
+              <Select
+                id="density"
+                value={draft.style.density}
+                onChange={(e) => setStyle({ density: e.target.value as StyleDraft["density"] })}
+              >
+                <option value="standard">Estándar</option>
+                <option value="compact">Compacta (menos espacio entre bloques)</option>
               </Select>
             </Field>
             <Field label="Columnas de los campos" htmlFor="scols">

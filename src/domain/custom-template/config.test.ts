@@ -67,6 +67,7 @@ describe("custom template config", () => {
       headerVariant: "classic",
       tableStyle: "tinted",
       totalsStyle: "bar",
+      density: "standard",
       sectionColumns: 1,
       showTerms: true,
       approval: false,
@@ -89,6 +90,10 @@ describe("custom template config", () => {
     expect(() => parseCustomTemplateConfig({ style: { headerVariant: "<script>" } })).toThrow();
     expect(() => parseCustomTemplateConfig({ style: { tableStyle: "fancy" } })).toThrow();
     expect(() => parseCustomTemplateConfig({ style: { sectionColumns: 3 } })).toThrow();
+    expect(parseCustomTemplateConfig({ style: { density: "compact" } }).style.density).toBe(
+      "compact",
+    );
+    expect(() => parseCustomTemplateConfig({ style: { density: "tiny" } })).toThrow();
   });
 
   it("limita las fichas destacadas a 4 y el anticipo a un único importe", () => {

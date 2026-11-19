@@ -97,6 +97,7 @@ export function ContinuationHeader({
   accent,
   left = 0,
   style,
+  docLabel = "Presupuesto",
 }: {
   m: PdfModel;
   font?: string;
@@ -106,6 +107,8 @@ export function ContinuationHeader({
   /** Margen izquierdo extra (plantillas con barra lateral). */
   left?: number;
   style?: Style;
+  /** Tipo de documento configurado (por defecto "Presupuesto"). */
+  docLabel?: string;
 }) {
   const q = m.quote;
   return (
@@ -138,7 +141,7 @@ export function ContinuationHeader({
               <Text
                 style={{ fontFamily: font, fontSize: 8.5, fontWeight: 600, lineHeight: 1.2, color }}
               >
-                Presupuesto N.º {q.number} · {m.issueDate}
+                {docLabel} N.º {q.number} · {m.issueDate}
               </Text>
               <Text style={{ fontFamily: font, fontSize: 8.5, lineHeight: 1.2, color: muted }}>
                 Cliente: {q.customer.name}

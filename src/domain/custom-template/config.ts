@@ -17,6 +17,7 @@ export type CustomFieldType = (typeof CUSTOM_FIELD_TYPES)[number];
 export const HEADER_VARIANTS = ["classic", "banner", "boxed"] as const;
 export const TABLE_STYLES = ["tinted", "lines", "zebra", "grid"] as const;
 export const TOTALS_STYLES = ["bar", "box", "plain"] as const;
+export const DENSITIES = ["standard", "compact"] as const;
 export const FIELD_ROLES = ["advance"] as const;
 
 const fieldId = z
@@ -70,6 +71,8 @@ export const customStyleSchema = z.object({
   headerVariant: z.enum(HEADER_VARIANTS).optional().default("classic"),
   tableStyle: z.enum(TABLE_STYLES).optional().default("tinted"),
   totalsStyle: z.enum(TOTALS_STYLES).optional().default("bar"),
+  /** Densidad: "compact" reduce márgenes, espaciados y alturas de bloques. */
+  density: z.enum(DENSITIES).optional().default("standard"),
   sectionColumns: z
     .union([z.literal(1), z.literal(2)])
     .optional()
