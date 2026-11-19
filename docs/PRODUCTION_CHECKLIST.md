@@ -2,7 +2,7 @@
 
 Estado real de cada punto, con evidencia. Estados: **Implementado**, **Probado localmente**, **Probado en sandbox**, **Desplegado**, **Verificado en producción**, **Bloqueado por credenciales**, **Pendiente de aprobación**.
 
-Última actualización: 2026-11-19 (plantillas privadas y administración; modalidad de validación controlada).
+Última actualización: 2026-11-19 (estabilización: rotación de secreto, vista previa fiel, administración por formulario; modalidad de validación controlada).
 
 ## Aplicación
 
@@ -20,6 +20,11 @@ Estado real de cada punto, con evidencia. Estados: **Implementado**, **Probado l
 | Plantillas personalizadas: sección comercial + WhatsApp | Probado localmente | Landing + FAQ; enlace `wa.me` solo si `ATAJOLAB_WHATSAPP_E164` está definido (si no, correo) |
 | Plantillas privadas (modelo, versionado, asignaciones, campos, PDF) | Probado localmente · **Verificado en producción** (smoke 2026-11-19) | Vitest con PostgreSQL, PDF con campos y multipágina, revisión visual; en producción: alta, activación, asignación, PDF 200 a la cuenta asignada, 403 a otra, 422 con campo obligatorio faltante |
 | Administración (`/admin`, roles, auditoría, vista previa PDF) | Probado localmente · **Verificado en producción** (smoke 2026-11-19) | E2E `private-templates.spec.ts` (desktop y mobile); en producción: 404 a anónimo y usuario común, vista previa PDF solo admin, revocación inmediata (403), auditoría registrada |
+| Rotación de `CRON_SECRET` | **Verificado en producción** | Secreto nuevo generado en el servidor; el anterior → 401; sin secreto → 401; el cron horario de las 21:00 UTC corrió con el nuevo (HTTP 200); el crontab ya no contiene secretos (`cron-billing.sh`). Test `route.test.ts` |
+| Contacto comercial por WhatsApp | **Verificado en producción** | `ATAJOLAB_WHATSAPP_E164` configurado con el número comercial oficial que figura en `atajolab-shop` (`src/data/site.ts`); la landing (ahora renderizada por solicitud) emite enlaces `wa.me`. E2E desktop y mobile con un número de prueba |
+| Vista previa fiel del PDF (plantillas privadas) | **Verificado en producción** (smoke) | PDF real rasterizado con pdf.js, debounce 900 ms, no consume cupo, límite propio, 403 sin asignación |
+| Administración por formulario | **Verificado en producción** (smoke) | E2E `template-admin-form.spec.ts` (campos, secciones, orden, validación, versionado v1/v2); vista previa de configuración sin guardar |
+| Flujo comercial completo con 3 plantillas demo | Probado localmente | `demo-templates.spec.ts`; PDFs en `examples/demo-pdfs/` (no versionados); no se crean en producción |
 | Rate limiting | Implementado | Una réplica. Ver `docs/security-audit.md` |
 | Auditoría de seguridad (código) | Completada localmente | `docs/security-audit.md` |
 
@@ -64,11 +69,21 @@ Estado real de cada punto, con evidencia. Estados: **Implementado**, **Probado l
 - No hay ninguna cuenta ADMIN ni plantilla creada en producción: el primer administrador se otorga manualmente (ver `docs/custom-templates.md`).
 - `ATAJOLAB_WHATSAPP_E164` **no está definido** en producción: los botones de la landing usan el correo como alternativa hasta que se configure el número comercial.
 
+## Despliegue de estabilización (2026-11-19)
+
+- Imagen `latest` de `8131492` (CI y Docker en verde); backup verificado antes (`presupuestos-20261119T213056Z.dump`); sin migraciones nuevas (6 aplicadas).
+- Solo se recreó `presupuestos-app`. Agendia responde 200 y sus contenedores no se tocaron.
+- Rollback: imagen anterior etiquetada `rollback-20261119b` en el VPS (`TAG=rollback-20261119b docker compose up -d app`).
+- Smoke real en producción (16 verificaciones) con cuentas descartables y plantilla de prueba, **eliminadas al terminar** (0 usuarios `@smoke.example`, 0 plantillas).
+
 ## Modalidad actual
 
 **Validación controlada.** La app está pública en HTTPS con pagos y correos deshabilitados. No hay mocks de compra en producción. No abrir lanzamiento comercial hasta Mercado Pago sandbox, Resend, backups externos, alertas y textos legales.
 
 ## Acciones necesarias de tu parte
+
+Pasos detallados de cada una en `docs/guia-integraciones.md`. Las credenciales se cargan con `./scripts/set-secret.sh` (entrada oculta), no por chat.
+
 
 1. **Mercado Pago**: app independiente; credenciales de **prueba**; webhook `https://presupuestos.atajolab.dev/api/webhooks/mercadopago`; temas `payment`, `subscription_preapproval`, `subscription_authorized_payment`. Guardar token y secreto en `/opt/atajolab/apps/presupuestos/.env` (600) y recrear el contenedor app.
 2. **Resend**: API key independiente; remitente `presupuestos@atajolab.dev`.
