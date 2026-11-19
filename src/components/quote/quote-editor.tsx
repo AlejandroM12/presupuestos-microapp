@@ -24,7 +24,9 @@ import {
   sharePdfNatively,
 } from "@/lib/pdf-client";
 import { LIMITS } from "@/lib/config/plans";
+import { looksLikeCustomTemplateId } from "@/domain/custom-template/access";
 import { useEntitlements } from "@/lib/use-entitlements";
+import { usePrivateTemplates } from "@/lib/use-private-templates";
 import { cn } from "@/lib/utils";
 import {
   AdjustmentsSection,
@@ -33,6 +35,7 @@ import {
   IssuerSection,
   ItemsSection,
 } from "./form-sections";
+import { CustomFieldsSection } from "./custom-fields-section";
 import { DesignSection } from "./design-section";
 import { QuotePreview } from "./quote-preview";
 
@@ -80,7 +83,11 @@ export function QuoteEditor({ cloud }: { cloud?: EditorCloud }) {
       if (cloud?.profile && !quote.issuer.businessName) quote = applyProfile(quote, cloud.profile);
       next = { quote, restored: !!stored, savedAt: stored?.savedAt ?? "" };
     }
-    if (cloud?.templateId && TEMPLATES.some((t) => t.id === cloud.templateId)) {
+    if (
+      cloud?.templateId &&
+      (TEMPLATES.some((t) => t.id === cloud.templateId) ||
+        looksLikeCustomTemplateId(cloud.templateId))
+    ) {
       next = { ...next, quote: { ...next.quote, templateId: cloud.templateId } };
     }
     setLoaded(next);
@@ -121,6 +128,7 @@ function EditorForm({
   const [pdfBusy, setPdfBusy] = useState(false);
   const [nativeShare, setNativeShare] = useState(false);
   const { entitlements, refresh: refreshEntitlements } = useEntitlements();
+  const { templates: privateTemplates } = usePrivateTemplates(entitlements.authenticated);
   const router = useRouter();
   const quoteId = cloud?.quoteId ?? null;
   const [customerId, setCustomerId] = useState<string | null>(cloud?.customerId ?? null);
@@ -165,6 +173,7 @@ function EditorForm({
     };
   }, [values, quoteId]);
 
+  const activePrivate = privateTemplates.find((t) => t.id === values.templateId);
   const designLocked = !entitlements.templates.includes(values.templateId);
   const currency = values.currency === "USD" ? "USD" : "ARS";
 
@@ -423,10 +432,19 @@ function EditorForm({
             templateId={values.templateId}
             accentColor={values.accentColor ?? ""}
             entitlements={entitlements}
+            privateTemplates={privateTemplates}
             setValue={setValue}
             onPreview={previewDesign}
             previewBusy={pdfBusy}
           />
+          {activePrivate && (
+            <CustomFieldsSection
+              template={activePrivate}
+              values={values.customFieldValues ?? {}}
+              setValue={setValue}
+              disabled={readOnly}
+            />
+          )}
         </form>
 
         <aside
@@ -435,7 +453,9 @@ function EditorForm({
           <QuotePreview
             quote={{
               ...values,
-              accentColor: entitlements.allowCustomColor ? values.accentColor : "",
+              accentColor: entitlements.allowCustomColor
+                ? values.accentColor || activePrivate?.accent || ""
+                : "",
             }}
             totals={totals}
           />

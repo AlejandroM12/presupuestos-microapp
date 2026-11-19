@@ -8,12 +8,14 @@ import { Button } from "@/components/ui/button";
 import type { Entitlements } from "@/domain/entitlements";
 import type { QuoteDraft } from "@/domain/quote/schema";
 import { TEMPLATES } from "@/domain/templates";
+import type { PrivateTemplateMeta } from "@/lib/use-private-templates";
 import { cn } from "@/lib/utils";
 
 interface Props {
   templateId: string;
   accentColor: string;
   entitlements: Entitlements;
+  privateTemplates?: PrivateTemplateMeta[];
   setValue: UseFormSetValue<QuoteDraft>;
   onPreview: () => void;
   previewBusy: boolean;
@@ -23,11 +25,20 @@ export function DesignSection({
   templateId,
   accentColor,
   entitlements,
+  privateTemplates = [],
   setValue,
   onPreview,
   previewBusy,
 }: Props) {
-  const selected = TEMPLATES.find((t) => t.id === templateId) ?? TEMPLATES[0];
+  const privateSelected = privateTemplates.find((t) => t.id === templateId);
+  const selected = privateSelected
+    ? {
+        id: privateSelected.id,
+        name: privateSelected.name,
+        description: privateSelected.description || "Plantilla privada de tu cuenta.",
+        accent: privateSelected.accent,
+      }
+    : (TEMPLATES.find((t) => t.id === templateId) ?? TEMPLATES[0]);
   const locked = !entitlements.templates.includes(selected.id);
   const colorValue = /^#[0-9a-f]{6}$/i.test(accentColor) ? accentColor : selected.accent;
 
@@ -68,6 +79,40 @@ export function DesignSection({
           );
         })}
       </div>
+
+      {privateTemplates.length > 0 && (
+        <div className="mt-5">
+          <h3 className="text-sm font-semibold text-ink">Mis plantillas privadas</h3>
+          <div
+            role="radiogroup"
+            aria-label="Plantillas privadas"
+            className="mt-2 flex flex-wrap gap-2"
+          >
+            {privateTemplates.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                role="radio"
+                aria-checked={t.id === templateId}
+                onClick={() => setValue("templateId", t.id, { shouldDirty: true })}
+                className={cn(
+                  "rounded-lg border px-3 py-2 text-sm font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/40",
+                  t.id === templateId
+                    ? "border-ink bg-ink/5 ring-2 ring-ink"
+                    : "border-border hover:bg-muted",
+                )}
+              >
+                <span
+                  aria-hidden
+                  className="mr-2 inline-block size-2.5 rounded-full align-middle"
+                  style={{ backgroundColor: t.accent }}
+                />
+                {t.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <p className="mt-4 text-sm text-muted-foreground">{selected.description}</p>
 
