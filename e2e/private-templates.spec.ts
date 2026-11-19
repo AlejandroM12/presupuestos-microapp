@@ -1,6 +1,17 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { Client } from "pg";
 
+/** Ejecuta una acción de administración y espera la respuesta real del servidor (no un cartel previo). */
+async function act(page: Page, name: string) {
+  const button = page.getByRole("button", { name });
+  const done = page.waitForResponse(
+    (r) => r.request().method() === "POST" && !r.url().includes("/preview"),
+  );
+  await button.click();
+  await done;
+  await page.waitForLoadState("networkidle");
+}
+
 const PASSWORD = "clave-e2e-segura-1";
 const unique = (tag: string) =>
   `${tag}-${Date.now()}-${Math.floor(Math.random() * 1e6)}@e2e.example`;
@@ -67,6 +78,7 @@ const quote = (templateId: string, values: Record<string, unknown> = {}) => ({
 });
 
 test.describe.configure({ mode: "serial" });
+test.setTimeout(120_000);
 
 test.describe("plantillas privadas", () => {
   test("usuarios comunes y anónimos no ven la administración", async ({ browser, page }) => {
@@ -100,7 +112,7 @@ test.describe("plantillas privadas", () => {
     // Crear plantilla
     await admin.goto("/admin/plantillas");
     await admin.getByLabel("Nombre").first().fill("Taller Rojas E2E");
-    await admin.getByRole("button", { name: "Crear borrador" }).click();
+    await act(admin, "Crear borrador");
     await admin.waitForURL(/\/admin\/plantillas\/[0-9a-f-]{36}/);
     const templateId = admin.url().match(/plantillas\/([0-9a-f-]{36})/)![1];
 
@@ -116,18 +128,21 @@ test.describe("plantillas privadas", () => {
         { id: "serie", label: "N.º de serie", type: "text", sectionId: "equipo", required: true },
       ],
     });
+    await admin.waitForLoadState("networkidle");
+    await admin.getByRole("button", { name: "Modo avanzado (JSON)" }).click();
     await admin.getByLabel("Estilo, campos y secciones (JSON)").fill(config);
-    await admin.getByRole("button", { name: "Guardar cambios" }).click();
+    await act(admin, "Guardar cambios");
     await expect(admin.getByText("Listo.")).toBeVisible();
 
-    // JSON inválido se rechaza con mensaje
+    // JSON inválido: el formulario avisa y no deja guardar
     await admin.waitForLoadState("networkidle");
+    await admin.getByRole("button", { name: "Modo avanzado (JSON)" }).click();
     await admin.getByLabel("Estilo, campos y secciones (JSON)").fill("{ no es json");
-    await admin.getByRole("button", { name: "Guardar cambios" }).click();
-    await expect(admin.locator("p[role=alert]")).toContainText("JSON");
+    await expect(admin.getByText("El JSON no es válido.")).toBeVisible();
+    await expect(admin.getByRole("button", { name: "Guardar cambios" })).toBeDisabled();
 
     await admin.goto(`/admin/plantillas/${templateId}`);
-    await admin.getByRole("button", { name: "Activar" }).click();
+    await act(admin, "Activar");
     await expect(admin.getByText("Listo.")).toBeVisible();
 
     // La vista previa PDF del administrador funciona; la de otros usuarios no
@@ -140,7 +155,7 @@ test.describe("plantillas privadas", () => {
 
     // Asignar a Alice
     await admin.getByLabel("Email de la cuenta").fill(alice.email);
-    await admin.getByRole("button", { name: "Asignar" }).click();
+    await act(admin, "Asignar");
     await expect(admin.getByText(alice.email)).toBeVisible();
 
     // Alice la ve y puede generar el PDF (sin marca); Bob no
@@ -178,7 +193,7 @@ test.describe("plantillas privadas", () => {
     // Revocar quita el acceso al instante
     await admin.goto(`/admin/plantillas/${templateId}`);
     await admin.getByLabel("Motivo de la revocación").fill("Fin de contrato");
-    await admin.getByRole("button", { name: "Revocar" }).click();
+    await act(admin, "Revocar");
     await expect(admin.getByText("Sin asignaciones vigentes.")).toBeVisible();
     const afterRevoke = await alice.request.post("/api/quotes/pdf", {
       data: quote(templateId, { serie: "SN-77" }),

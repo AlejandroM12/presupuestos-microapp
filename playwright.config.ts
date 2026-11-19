@@ -38,6 +38,9 @@ export default defineConfig({
       AUTH_TRUST_HOST: "true",
       RATE_LIMIT_REGISTER_PER_HOUR: "1000",
       RATE_LIMIT_PDF_PER_MINUTE: "1000",
+      RATE_LIMIT_PREVIEW_PER_MINUTE: "1000",
+      // Número de PRUEBA para los CTA de la landing (no es el número comercial).
+      ATAJOLAB_WHATSAPP_E164: "5491100000000",
       MERCADOPAGO_WEBHOOK_SECRET: "e2e-webhook-secret",
       MERCADOPAGO_ACCESS_TOKEN: "",
       RATE_LIMIT_LOGIN_PER_IP: "10000",
