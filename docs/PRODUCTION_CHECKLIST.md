@@ -2,7 +2,7 @@
 
 Estado real de cada punto, con evidencia. Estados: **Implementado**, **Probado localmente**, **Probado en sandbox**, **Desplegado**, **Verificado en producción**, **Bloqueado por credenciales**, **Pendiente de aprobación**.
 
-Última actualización: 2026-11-19 (auditoría visual de PDFs; modalidad de validación controlada).
+Última actualización: 2026-11-19 (pulido final de documentos; modalidad de validación controlada).
 
 ## Aplicación
 
@@ -84,6 +84,13 @@ Estado real de cada punto, con evidencia. Estados: **Implementado**, **Probado l
 - Rollback: imagen anterior etiquetada `rollback-20261119c`.
 - La auditoría de dependencias bloqueó la CI por una vulnerabilidad alta en `effect` (dependencia transitiva de Prisma): se fijó la versión parcheada 3.x con un `override` de pnpm.
 - Smoke de producción con las opciones nuevas: 16 verificaciones correctas; cuentas y plantilla de prueba eliminadas. Agendia responde 200.
+
+## Despliegue del pulido final de documentos (2026-11-19)
+
+- Imagen `latest` de `8b254d3` (CI y Docker en verde); backup verificado `presupuestos-20261119T233505Z.dump`; sin migraciones nuevas. Rollback: imagen anterior etiquetada `rollback-20261119d`.
+- Incluye densidad estándar/compacta, Moderno a ancho completo desde la segunda página, normalización de cantidades y unidades, títulos de sección no redundantes y tipo de documento en las páginas de continuación.
+- Smoke de producción (16 verificaciones, con densidad compacta), cuentas y plantilla de prueba eliminadas. Agendia responde 200.
+- Pruebas omitidas documentadas en `docs/development.md`: 3 generadores de muestras de Vitest (se activan con variables de entorno) y 3 flujos de demostración en mobile de Playwright (cubiertos en desktop; mobile se prueba en otros specs).
 
 ## Modalidad actual
 
