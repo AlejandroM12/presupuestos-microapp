@@ -4,3 +4,6 @@ allowBuilds:
   esbuild: true
   prisma: true
   '@prisma/engines': true
+overrides:
+  # Parche de seguridad (GHSA-7589-6fvf-x4pw) para la dependencia transitiva de Prisma.
+  effect: '^3.22.1'
