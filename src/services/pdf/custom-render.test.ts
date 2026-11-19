@@ -82,3 +82,15 @@ describe("plantilla privada", () => {
     pages.forEach((p, i) => expect(p).toContain(`Página ${i + 1} de ${pages.length}`));
   });
 });
+
+// Utilidad de desarrollo: PDF_DUMP_DIR=<carpeta> pnpm test custom-render escribe PDFs de muestra.
+describe.runIf(process.env.PDF_DUMP_DIR)("volcado de PDFs de plantilla privada", () => {
+  it("escribe muestras", async () => {
+    const { mkdirSync, writeFileSync } = await import("node:fs");
+    mkdirSync(process.env.PDF_DUMP_DIR!, { recursive: true });
+    const values = { patente: "AB123CD", km: 85000, ingreso: "2026-05-02", seguro: true };
+    for (const n of [3, 40]) {
+      writeFileSync(`${process.env.PDF_DUMP_DIR}/privada-${n}.pdf`, await render(quote(n, values)));
+    }
+  });
+});

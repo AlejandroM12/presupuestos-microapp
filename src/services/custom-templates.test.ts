@@ -213,4 +213,13 @@ describe.skipIf(!enabled)("plantillas privadas (PostgreSQL)", () => {
       expect(actions.has(a as never)).toBe(true);
     }
   });
+
+  it("altas simultáneas con el mismo nombre generan identificadores distintos", async () => {
+    const made = await Promise.all(
+      Array.from({ length: 5 }, () =>
+        createCustomTemplate({ name: "Paralela", slug: "test-paralela", actorId: admin }),
+      ),
+    );
+    expect(new Set(made.map((t) => t.slug)).size).toBe(5);
+  });
 });

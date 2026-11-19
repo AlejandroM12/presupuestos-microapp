@@ -83,25 +83,29 @@ export async function createCustomTemplate(input: {
   }
 
   const baseSlug = input.slug?.trim() || slugify(input.name) || "plantilla";
-  let slug = baseSlug;
-  for (let i = 0; i < 8; i++) {
-    const exists = await db.customTemplate.findUnique({ where: { slug }, select: { id: true } });
-    if (!exists) break;
-    slug = `${baseSlug}-${i + 2}`;
-  }
+  const data = {
+    name: input.name.trim(),
+    description: input.description?.trim() ?? "",
+    style: json(config.style),
+    fields: json(config.fields),
+    sections: json(config.sections),
+    status: "DRAFT" as const,
+    version: 1,
+  };
 
-  const template = await db.customTemplate.create({
-    data: {
-      name: input.name.trim(),
-      description: input.description?.trim() ?? "",
-      slug,
-      style: json(config.style),
-      fields: json(config.fields),
-      sections: json(config.sections),
-      status: "DRAFT",
-      version: 1,
-    },
-  });
+  // El slug es único: ante una colisión (también entre altas simultáneas) se reintenta con sufijo.
+  let template: Awaited<ReturnType<typeof db.customTemplate.create>> | undefined;
+  for (let i = 0; i < 8 && !template; i++) {
+    const slug =
+      i === 0 ? baseSlug : `${baseSlug}-${i === 1 ? 2 : Math.random().toString(36).slice(2, 6)}`;
+    try {
+      template = await db.customTemplate.create({ data: { ...data, slug } });
+    } catch (error) {
+      if ((error as { code?: string }).code !== "P2002") throw error;
+    }
+  }
+  if (!template)
+    throw new CustomTemplateError("invalid_config", "No se pudo generar un identificador único");
 
   await db.adminAuditLog.create({
     data: {

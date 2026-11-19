@@ -44,8 +44,8 @@ export function CustomDocument({ m }: { m: PdfModel }) {
     business: { fontSize: 16, fontWeight: 700, lineHeight: 1.2, marginBottom: 3 },
     muted: { color: MUTED },
     docTitle: { fontSize: 8, letterSpacing: 2, textTransform: "uppercase", color: accent },
-    docNumber: { fontSize: 16, fontWeight: 700, marginTop: 2 },
-    subtitle: { color: MUTED, marginTop: 2, maxWidth: 200, textAlign: "right" },
+    docNumber: { fontSize: 16, fontWeight: 700, lineHeight: 1.2, marginTop: 2 },
+    subtitle: { color: MUTED, marginTop: 4, maxWidth: 200, textAlign: "right" },
     rule: { height: 1, backgroundColor: accent, marginTop: 16, marginBottom: 14 },
     label: {
       fontSize: 7,

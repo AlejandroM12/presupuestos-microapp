@@ -121,6 +121,7 @@ test.describe("plantillas privadas", () => {
     await expect(admin.getByText("Listo.")).toBeVisible();
 
     // JSON inválido se rechaza con mensaje
+    await admin.waitForLoadState("networkidle");
     await admin.getByLabel("Estilo, campos y secciones (JSON)").fill("{ no es json");
     await admin.getByRole("button", { name: "Guardar cambios" }).click();
     await expect(admin.locator("p[role=alert]")).toContainText("JSON");

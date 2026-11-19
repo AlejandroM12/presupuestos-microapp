@@ -31,3 +31,7 @@ Pro permite descargas sujetas a uso razonable. No usamos la expresión «sin lí
 | Tope técnico mensual | 3.000 | Bloquea hasta el mes siguiente; se invita a contactar para más volumen. |
 
 La política es pública en `/legal/uso-razonable`. Si se cambian los valores, actualizar ese texto.
+
+## Plantillas personalizadas (servicio aparte)
+
+Diseños privados por profesión o negocio, **a cotizar por WhatsApp** (sin precio publicado). Se asignan por cuenta, son independientes del plan y se conservan al cancelar Pro. Salen sin marca de AtajoLab y cuentan contra el cupo de descargas del plan. Ver `docs/custom-templates.md`.
