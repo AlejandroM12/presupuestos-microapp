@@ -96,7 +96,8 @@ async function adminCreatesAndAssigns(admin: Page, demo: DemoTemplate, clientEma
 
   await admin.waitForLoadState("networkidle");
   await act(admin, "Activar");
-  await expect(admin.getByText("Listo.")).toBeVisible();
+  // La vista nueva (estado ACTIVE) es la señal de que el redireccionamiento ya se aplicó.
+  await expect(admin.getByRole("button", { name: "Publicar nueva versión" })).toBeVisible();
   await admin.waitForLoadState("networkidle");
   await admin.getByLabel("Email de la cuenta").fill(clientEmail);
   await act(admin, "Asignar");

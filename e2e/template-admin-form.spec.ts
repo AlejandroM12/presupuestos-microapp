@@ -165,7 +165,8 @@ test("configuración por formulario: campos, secciones, orden, validación y ver
 
   // Activar (v1), asignar y editar → publicar v2 conserva la v1
   await act(admin, "Activar");
-  await expect(admin.getByText("Listo.")).toBeVisible();
+  // La vista nueva (estado ACTIVE) es la señal de que el redireccionamiento ya se aplicó.
+  await expect(admin.getByRole("button", { name: "Publicar nueva versión" })).toBeVisible();
   await admin.waitForLoadState("networkidle");
   await admin.getByLabel("Email de la cuenta").fill(clientEmail);
   await act(admin, "Asignar");
@@ -224,7 +225,8 @@ test("la vista previa de una plantilla privada exige asignación y la API de adm
   const id = admin.url().match(/plantillas\/([0-9a-f-]{36})/)![1];
   await admin.waitForLoadState("networkidle");
   await act(admin, "Activar");
-  await expect(admin.getByText("Listo.")).toBeVisible();
+  // La vista nueva (estado ACTIVE) es la señal de que el redireccionamiento ya se aplicó.
+  await expect(admin.getByRole("button", { name: "Publicar nueva versión" })).toBeVisible();
 
   expect(
     (await other.request.post("/api/quotes/pdf?preview=1", { data: quoteBody(id) })).status(),

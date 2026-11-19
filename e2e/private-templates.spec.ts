@@ -143,7 +143,8 @@ test.describe("plantillas privadas", () => {
 
     await admin.goto(`/admin/plantillas/${templateId}`);
     await act(admin, "Activar");
-    await expect(admin.getByText("Listo.")).toBeVisible();
+    // La vista nueva (estado ACTIVE) es la señal de que el redireccionamiento ya se aplicó.
+    await expect(admin.getByRole("button", { name: "Publicar nueva versión" })).toBeVisible();
 
     // La vista previa PDF del administrador funciona; la de otros usuarios no
     const preview = await admin.request.get(`/api/admin/templates/${templateId}/preview`);
