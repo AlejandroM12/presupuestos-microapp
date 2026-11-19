@@ -25,9 +25,9 @@ Consola interna en `/admin` para gestionar plantillas privadas. No es pública: 
 
 El formulario cubre lo habitual sin tocar JSON:
 
-- **Estilo**: color de acento, tipografía (moderna Inter, clásica Lora, técnica JetBrains Mono), título y subtítulo del encabezado, texto del pie, logo sí/no.
-- **Secciones**: agregar, renombrar, ordenar y eliminar (los campos de una sección eliminada pasan a "sin sección").
-- **Campos**: etiqueta, tipo (texto, texto largo, número, fecha, lista, casilla, importe), obligatorio, valor predeterminado, ayuda, sección, "mostrar en el PDF", opciones de listas (una por línea) y orden. El identificador técnico se genera de la etiqueta al crear el campo y **queda fijo** después, para no romper presupuestos ya guardados.
+- **Estilo**: color de acento, tipografía (moderna Inter, clásica Lora, técnica JetBrains Mono), título y subtítulo del encabezado, texto del pie, logo sí/no, **variante de encabezado** (clásico, banda de color, ficha), **estilo de tabla** (fondo suave, líneas, filas alternadas, cuadrícula), **estilo de totales** (barra, recuadro, línea), columnas de los campos, condiciones comerciales sí/no y bloque de aprobación.
+- **Secciones**: agregar, renombrar, elegir una o dos columnas, ordenar y eliminar (los campos de una sección eliminada pasan a "sin sección").
+- **Campos**: etiqueta, tipo (texto, texto largo, número, fecha, lista, casilla, importe), obligatorio, valor predeterminado, ayuda, sección, "mostrar en el PDF", **ficha destacada** (máx. 4), **unidad** (km, m²), **anticipo** (importe que calcula el saldo pendiente), opciones de listas (una por línea) y orden. El identificador técnico se genera de la etiqueta al crear el campo y **queda fijo** después, para no romper presupuestos ya guardados.
 - **Validación antes de guardar**: usa el mismo esquema Zod que el servidor; el botón se bloquea y se listan los errores. El servidor vuelve a validar siempre.
 - **Vista previa de esta configuración**: genera el PDF real con datos de ejemplo (sin guardar) y lo muestra en la página.
 - **Modo avanzado (JSON)**: para casos específicos (por ejemplo mínimos y máximos de un campo). Al volver al formulario se reinterpreta el JSON.
