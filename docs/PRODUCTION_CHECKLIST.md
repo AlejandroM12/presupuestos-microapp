@@ -2,7 +2,7 @@
 
 Estado real de cada punto, con evidencia. Estados: **Implementado**, **Probado localmente**, **Probado en sandbox**, **Desplegado**, **Verificado en producción**, **Bloqueado por credenciales**, **Pendiente de aprobación**.
 
-Última actualización: 2026-11-19 (estabilización: rotación de secreto, vista previa fiel, administración por formulario; modalidad de validación controlada).
+Última actualización: 2026-11-19 (auditoría visual de PDFs; modalidad de validación controlada).
 
 ## Aplicación
 
@@ -25,6 +25,8 @@ Estado real de cada punto, con evidencia. Estados: **Implementado**, **Probado l
 | Vista previa fiel del PDF (plantillas privadas) | **Verificado en producción** (smoke) | PDF real rasterizado con pdf.js, debounce 900 ms, no consume cupo, límite propio, 403 sin asignación |
 | Administración por formulario | **Verificado en producción** (smoke) | E2E `template-admin-form.spec.ts` (campos, secciones, orden, validación, versionado v1/v2); vista previa de configuración sin guardar |
 | Flujo comercial completo con 3 plantillas demo | Probado localmente | `demo-templates.spec.ts`; PDFs en `examples/demo-pdfs/` (no versionados); no se crean en producción |
+| Paginación de PDF (seis diseños + plantillas privadas) | Probado localmente · **Verificado en producción** (smoke) | `pagination.test.ts`: 1/5/10/35/100 conceptos; un encabezado por página, sin páginas huérfanas, encabezado compacto de continuación; revisión visual de todas las páginas de las muestras |
+| Estructura declarativa de plantillas privadas | Probado localmente · **Verificado en producción** (smoke) | Variantes de encabezado, tabla y totales, columnas, fichas, aprobación, anticipo/saldo; compatibilidad con configuraciones previas |
 | Rate limiting | Implementado | Una réplica. Ver `docs/security-audit.md` |
 | Auditoría de seguridad (código) | Completada localmente | `docs/security-audit.md` |
 
@@ -75,6 +77,13 @@ Estado real de cada punto, con evidencia. Estados: **Implementado**, **Probado l
 - Solo se recreó `presupuestos-app`. Agendia responde 200 y sus contenedores no se tocaron.
 - Rollback: imagen anterior etiquetada `rollback-20261119b` en el VPS (`TAG=rollback-20261119b docker compose up -d app`).
 - Smoke real en producción (16 verificaciones) con cuentas descartables y plantilla de prueba, **eliminadas al terminar** (0 usuarios `@smoke.example`, 0 plantillas).
+
+## Despliegue de la auditoría visual (2026-11-19)
+
+- Imagen `latest` de `8013604` (CI y Docker en verde); backup verificado `presupuestos-20261119T225516Z.dump`; sin migraciones nuevas.
+- Rollback: imagen anterior etiquetada `rollback-20261119c`.
+- La auditoría de dependencias bloqueó la CI por una vulnerabilidad alta en `effect` (dependencia transitiva de Prisma): se fijó la versión parcheada 3.x con un `override` de pnpm.
+- Smoke de producción con las opciones nuevas: 16 verificaciones correctas; cuentas y plantilla de prueba eliminadas. Agendia responde 200.
 
 ## Modalidad actual
 

@@ -22,7 +22,7 @@
 | Plantillas privadas | OK | Asignación vigente verificada en servidor al guardar, previsualizar y descargar; sin asignación → misma respuesta que diseño bloqueado; configuración solo datos validados con Zod (sin HTML/JS) |
 | Vista previa de plantillas privadas | OK | Mismo endpoint y reglas que el PDF final; límite propio (`RATE_LIMIT_PREVIEW_PER_MINUTE`), marca de agua, no consume cupo; 403 sin asignación (`template-admin-form.spec.ts`, `demo-templates.spec.ts`) |
 | Rotación de `CRON_SECRET` (2026-11-19) | OK | Secreto nuevo de 64 caracteres generado en el servidor; el anterior devuelve 401; el cron lee el valor de `.env` (`scripts/cron-billing.sh`) y ya no queda en el crontab ni en procesos; prueba `route.test.ts` |
-| Dependencias | OK tras fix | `pnpm audit --prod --audit-level high` limpio; `shadcn` movido a `devDependencies` |
+| Dependencias | OK: `effect` (transitiva de Prisma, GHSA-7589-6fvf-x4pw) fijada a 3.22.4 con `override`; | `pnpm audit --prod --audit-level high` limpio; `shadcn` movido a `devDependencies` |
 
 ## Hallazgos aceptados (no bloqueantes)
 
