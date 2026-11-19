@@ -216,6 +216,7 @@ test.describe("dashboard", () => {
     await expect(page.getByText("Todavía no cargaste clientes")).toBeVisible();
 
     await page.getByRole("link", { name: "Nuevo cliente" }).click();
+    await page.waitForLoadState("networkidle");
     await page.getByLabel("Nombre", { exact: true }).fill("Panadería La Espiga");
     await page.getByLabel("Email").fill("espiga@example.com");
     await page.getByRole("button", { name: "Crear cliente" }).click();
