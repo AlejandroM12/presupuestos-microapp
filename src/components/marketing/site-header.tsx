@@ -29,8 +29,13 @@ export function SiteHeader() {
           <Link href="/ingresar" className={buttonVariants({ variant: "ghost", size: "lg" })}>
             Ingresar
           </Link>
-          <Link href="/crear" className={buttonVariants({ size: "lg" })}>
-            Crear presupuesto
+          <Link
+            href="/crear"
+            aria-label="Crear presupuesto"
+            className={buttonVariants({ size: "lg" })}
+          >
+            <span className="sm:hidden">Crear</span>
+            <span className="hidden sm:inline">Crear presupuesto</span>
           </Link>
         </div>
       </div>

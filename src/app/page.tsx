@@ -11,6 +11,9 @@ import { SiteHeader } from "@/components/marketing/site-header";
 import { TemplatesShowcase } from "@/components/marketing/templates-showcase";
 import { siteConfig } from "@/lib/config/site";
 
+// El CTA de WhatsApp depende de variables de entorno: se evalúa en cada solicitud, no en el build.
+export const dynamic = "force-dynamic";
+
 const jsonLd = [
   {
     "@context": "https://schema.org",
