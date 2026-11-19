@@ -2,7 +2,7 @@
 
 Estado real de cada punto, con evidencia. Estados: **Implementado**, **Probado localmente**, **Probado en sandbox**, **Desplegado**, **Verificado en producción**, **Bloqueado por credenciales**, **Pendiente de aprobación**.
 
-Última actualización: 2026-11-17 (primer despliegue en VPS, modalidad de validación controlada).
+Última actualización: 2026-11-19 (plantillas privadas y administración; modalidad de validación controlada).
 
 ## Aplicación
 
@@ -16,6 +16,10 @@ Estado real de cada punto, con evidencia. Estados: **Implementado**, **Probado l
 | Retención al eliminar cuenta | Probado localmente | Ver `docs/retention.md` |
 | Páginas legales | Implementado (borrador) | `/legal/*` con `[COMPLETAR]`. **Bloquea lanzamiento comercial** |
 | Encabezados de seguridad / CSP | **Verificado en producción** | CSP, HSTS, nosniff, COOP en respuestas HTTPS |
+| Pack Premium: 20 descargas/mes | Probado localmente | `LIMITS.premiumPackMonthlyDownloads`; tests de entitlements; textos y legales alineados |
+| Plantillas personalizadas: sección comercial + WhatsApp | Probado localmente | Landing + FAQ; enlace `wa.me` solo si `ATAJOLAB_WHATSAPP_E164` está definido (si no, correo) |
+| Plantillas privadas (modelo, versionado, asignaciones, campos, PDF) | Probado localmente | Vitest con PostgreSQL (`custom-templates.test.ts`), PDF con campos y multipágina; revisión visual |
+| Administración (`/admin`, roles, auditoría, vista previa PDF) | Probado localmente | E2E `private-templates.spec.ts` (desktop y mobile): 404 a no admin, rol revocado surte efecto al instante, aislamiento entre cuentas |
 | Rate limiting | Implementado | Una réplica. Ver `docs/security-audit.md` |
 | Auditoría de seguridad (código) | Completada localmente | `docs/security-audit.md` |
 
@@ -50,6 +54,10 @@ Estado real de cada punto, con evidencia. Estados: **Implementado**, **Probado l
 | Cron de conciliación | **Desplegado** | Horario `POST /api/cron/billing` con `CRON_SECRET` |
 | Rollback | Implementado | Script listo; no ejercitado aún en un fallo real |
 | Despliegue automático desde CI | No activado | A propósito |
+
+## Plantillas privadas: estado de despliegue
+
+Ver el estado vigente en la sección "Despliegue de esta versión" del informe de la sesión y en `docs/custom-templates.md` (procedimiento para crear y asignar). Ninguna cuenta es ADMIN por defecto: el primer administrador se otorga manualmente con un `UPDATE` controlado.
 
 ## Modalidad actual
 

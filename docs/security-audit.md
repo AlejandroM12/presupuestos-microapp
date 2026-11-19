@@ -18,6 +18,8 @@
 | Cookies / sesión | OK | JWT Auth.js, `AUTH_TRUST_HOST`, HSTS en producción |
 | CSP / encabezados | OK con salvedad | `frame-ancestors 'none'`, `object-src 'none'`, nosniff, COOP. CSP usa `'unsafe-inline'` (Next.js) |
 | Secretos | OK en diseño | `.env` 600 en deploy; plantilla sin valores; no se versionan secretos |
+| Administración y roles | OK | `requireAdminUser`/`requireAdminApi` consultan el rol en la base en cada solicitud; 404 a no admin; rol revocado surte efecto inmediato; no hay autoasignación ni admin por defecto (`private-templates.spec.ts`) |
+| Plantillas privadas | OK | Asignación vigente verificada en servidor al guardar, previsualizar y descargar; sin asignación → misma respuesta que diseño bloqueado; configuración solo datos validados con Zod (sin HTML/JS) |
 | Dependencias | OK tras fix | `pnpm audit --prod --audit-level high` limpio; `shadcn` movido a `devDependencies` |
 
 ## Hallazgos aceptados (no bloqueantes)

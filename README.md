@@ -57,6 +57,7 @@ Guía completa: [`docs/development.md`](docs/development.md).
 - [Resend](docs/resend.md)
 - [Backups y restauración](docs/backups.md)
 - [Planes y permisos](docs/plans.md)
+- [Plantillas personalizadas y administración](docs/custom-templates.md)
 - [Monitoreo](docs/monitoring.md)
 - [Retención de datos](docs/retention.md)
 - [Checklist de producción (estado real)](docs/PRODUCTION_CHECKLIST.md)
