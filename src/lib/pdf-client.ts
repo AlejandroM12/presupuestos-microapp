@@ -10,7 +10,7 @@ function fileNameFrom(response: Response): string {
 /** Pide el PDF al servidor. El servidor valida de nuevo el presupuesto y los permisos. */
 export async function requestQuotePdf(
   quote: Quote,
-  { preview = false }: { preview?: boolean } = {},
+  { preview = false, signal }: { preview?: boolean; signal?: AbortSignal } = {},
 ): Promise<{ blob: Blob; fileName: string }> {
   let response: Response;
   try {
@@ -18,8 +18,10 @@ export async function requestQuotePdf(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(quote),
+      signal,
     });
-  } catch {
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") throw err;
     throw new PdfRequestError("No hay conexión. Revisá tu internet e intentá otra vez.");
   }
   if (!response.ok) {

@@ -6,9 +6,16 @@ export const runtime = "nodejs";
 
 const MAX_BODY_BYTES = 1_000_000;
 const limiter = new RateLimiter(Number(process.env.RATE_LIMIT_PDF_PER_MINUTE) || 20, 60_000);
+// Las vistas previas (con marca de agua, sin cupo) tienen su propio límite para que la
+// actualización automática del editor no consuma el de descargas ni lo evada.
+const previewLimiter = new RateLimiter(
+  Number(process.env.RATE_LIMIT_PREVIEW_PER_MINUTE) || 40,
+  60_000,
+);
 
 export async function POST(request: Request) {
-  const rate = limiter.check(clientIp(request.headers));
+  const isPreview = new URL(request.url).searchParams.get("preview") === "1";
+  const rate = (isPreview ? previewLimiter : limiter).check(clientIp(request.headers));
   if (!rate.allowed) {
     return pdfError(429, "Demasiados intentos. Probá de nuevo en unos segundos.", {
       "Retry-After": String(rate.retryAfterSeconds),
@@ -37,6 +44,5 @@ export async function POST(request: Request) {
   if (!parsed.success) return pdfError(422, "El presupuesto tiene datos inválidos o incompletos.");
   const quote = parsed.data;
 
-  const preview = new URL(request.url).searchParams.get("preview") === "1";
-  return issueQuotePdf(quote, preview);
+  return issueQuotePdf(quote, isPreview);
 }

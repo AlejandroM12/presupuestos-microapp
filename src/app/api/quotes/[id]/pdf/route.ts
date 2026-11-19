@@ -7,6 +7,11 @@ import { getQuote, NotFoundError } from "@/services/quotes";
 
 export const runtime = "nodejs";
 
+const previewLimiter = new RateLimiter(
+  Number(process.env.RATE_LIMIT_PREVIEW_PER_MINUTE) || 40,
+  60_000,
+);
+
 const limiter = new RateLimiter(Number(process.env.RATE_LIMIT_PDF_PER_MINUTE) || 20, 60_000);
 
 /**
@@ -16,7 +21,8 @@ const limiter = new RateLimiter(Number(process.env.RATE_LIMIT_PDF_PER_MINUTE) ||
 export async function GET(request: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     const user = await requireApiUser();
-    if (!limiter.check(user.id).allowed) {
+    const isPreview = new URL(request.url).searchParams.get("preview") === "1";
+    if (!(isPreview ? previewLimiter : limiter).check(user.id).allowed) {
       return pdfError(429, "Demasiados intentos. Probá de nuevo en unos segundos.");
     }
     const { id } = await ctx.params;

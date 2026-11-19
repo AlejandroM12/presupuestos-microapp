@@ -36,6 +36,7 @@ import {
   ItemsSection,
 } from "./form-sections";
 import { CustomFieldsSection } from "./custom-fields-section";
+import { PdfPreview } from "./pdf-preview";
 import { DesignSection } from "./design-section";
 import { QuotePreview } from "./quote-preview";
 
@@ -450,15 +451,17 @@ function EditorForm({
         <aside
           className={cn("lg:sticky lg:top-20 lg:self-start", tab === "edit" && "hidden lg:block")}
         >
-          <QuotePreview
-            quote={{
-              ...values,
-              accentColor: entitlements.allowCustomColor
-                ? values.accentColor || activePrivate?.accent || ""
-                : "",
-            }}
-            totals={totals}
-          />
+          {activePrivate ? (
+            <PdfPreview quote={values} />
+          ) : (
+            <QuotePreview
+              quote={{
+                ...values,
+                accentColor: entitlements.allowCustomColor ? values.accentColor : "",
+              }}
+              totals={totals}
+            />
+          )}
           <div className="mx-auto mt-5 max-w-[640px] space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <Button
