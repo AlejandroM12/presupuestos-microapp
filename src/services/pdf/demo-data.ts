@@ -562,3 +562,153 @@ export const DEMO_TEMPLATES: DemoTemplateData[] = [
     fill: { Equipo: "Split frío/calor 3000 frigorías" },
   },
 ];
+
+/**
+ * Variantes en USD de las demostraciones: precios cargados a mano con valores de mercado
+ * plausibles en dólares (no hay conversión automática de moneda; cada presupuesto se emite en
+ * una sola moneda).
+ */
+export const DEMO_USD: Record<
+  DemoTemplateData["key"],
+  { items: DemoItem[]; taxes?: DemoTemplateData["taxes"] }
+> = {
+  "taller-mecanico": {
+    items: [
+      {
+        description: "Aceite sintético 5W-30 (4 L)",
+        quantity: "1",
+        unit: "Unidad",
+        unitPrice: "45",
+      },
+      { description: "Filtro de aceite", quantity: "1", unit: "Unidad", unitPrice: "9.5" },
+      { description: "Filtro de aire", quantity: "1", unit: "Unidad", unitPrice: "12" },
+      { description: "Filtro de combustible", quantity: "1", unit: "Unidad", unitPrice: "16" },
+      {
+        description: "Kit de pastillas de freno delanteras",
+        quantity: "1",
+        unit: "Juego",
+        unitPrice: "50",
+      },
+      {
+        description: "Disco de freno ventilado delantero",
+        quantity: "2",
+        unit: "Unidad",
+        unitPrice: "37.5",
+        discountPercent: "5",
+      },
+      {
+        description: "Líquido de frenos DOT 4 (500 ml)",
+        quantity: "1",
+        unit: "Unidad",
+        unitPrice: "7.5",
+      },
+      {
+        description: "Diagnóstico con scanner y lectura de fallas",
+        quantity: "1",
+        unit: "Servicio",
+        unitPrice: "14",
+      },
+      {
+        description: "Mano de obra mecánica (service y frenos)",
+        quantity: "3.5",
+        unit: "h",
+        unitPrice: "21.5",
+      },
+    ],
+    taxes: [{ id: "iva", label: "IVA 21%", type: "percent", value: "21" }],
+  },
+  construccion: {
+    items: [
+      {
+        description: "Demolición de revestimientos existentes y retiro de escombros",
+        quantity: "38",
+        unit: "m²",
+        unitPrice: "3.2",
+      },
+      {
+        description: "Reparación de muros y revoque fino",
+        quantity: "22",
+        unit: "m²",
+        unitPrice: "5.2",
+      },
+      {
+        description: "Cañerías de agua y desagüe (provisión e instalación)",
+        quantity: "1",
+        unit: "gl",
+        unitPrice: "142",
+      },
+      {
+        description: "Porcelanato 60×60 cm (incluye 8% de desperdicio)",
+        quantity: "41",
+        unit: "m²",
+        unitPrice: "11.5",
+      },
+      {
+        description: "Adhesivo cementicio y pastina",
+        quantity: "12",
+        unit: "bolsa",
+        unitPrice: "6.4",
+      },
+      {
+        description: "Colocación de porcelanato (mano de obra)",
+        quantity: "38",
+        unit: "m²",
+        unitPrice: "7.5",
+      },
+      {
+        description: "Mesada de granito con bacha (provisión y colocación)",
+        quantity: "1",
+        unit: "u",
+        unitPrice: "317",
+      },
+      {
+        description: "Pintura látex interior, dos manos",
+        quantity: "64",
+        unit: "m²",
+        unitPrice: "3",
+      },
+      {
+        description: "Jornales de oficial y ayudante",
+        quantity: "12",
+        unit: "jornal",
+        unitPrice: "60",
+      },
+    ],
+    taxes: [{ id: "iva", label: "IVA 10,5%", type: "percent", value: "10.5" }],
+  },
+  "servicios-tecnicos": {
+    items: [
+      {
+        description: "Diagnóstico y visita técnica",
+        quantity: "1",
+        unit: "Servicio",
+        unitPrice: "11",
+      },
+      {
+        description: "Carga de gas refrigerante R410A",
+        quantity: "0.8",
+        unit: "kg",
+        unitPrice: "29",
+      },
+      {
+        description: "Capacitor de arranque (provisión y reemplazo)",
+        quantity: "1",
+        unit: "Unidad",
+        unitPrice: "17",
+      },
+      {
+        description: "Limpieza profunda de unidad interior y exterior",
+        quantity: "1",
+        unit: "Servicio",
+        unitPrice: "25",
+      },
+      {
+        description: "Cañería de cobre adicional con aislación",
+        quantity: "3",
+        unit: "m",
+        unitPrice: "7.3",
+      },
+      { description: "Mano de obra técnica", quantity: "2.5", unit: "h", unitPrice: "12.3" },
+    ],
+  },
+};

@@ -11,6 +11,8 @@ import {
   demoLogo,
   type LogoKind,
 } from "./demo-fixtures";
+import { calculateTotals } from "@/domain/quote/calculations";
+import { buildPdfModel } from "./model";
 import { extractPdfPages } from "./pdf-text";
 import { renderQuotePdf } from "./render";
 
@@ -221,48 +223,155 @@ describe("plantillas privadas: estructura declarativa", () => {
   }, 120_000);
 });
 
-// Utilidad de desarrollo: PDF_SAMPLES_DIR=<carpeta> genera ejemplos comerciales y casos extremos
-// para revisarlos a ojo. No se versionan.
+describe("pulido de documentos", () => {
+  const opts = (doc: ReturnType<typeof demoDocument>) => ({
+    templateId: DEMO_TEMPLATE_ID,
+    showBrand: false,
+    allowCustomColor: true,
+    custom: doc.config,
+  });
+  const textOf = async (doc: ReturnType<typeof demoDocument>) =>
+    (await extractPdfPages(await renderQuotePdf(doc.quote, opts(doc)))).join(" ");
+
+  it("las páginas de continuación mantienen el tipo de documento configurado", async () => {
+    const doc = demoDocument("taller-mecanico", 35);
+    const pages = await extractPdfPages(await renderQuotePdf(doc.quote, opts(doc)));
+    expect(pages[1]).toContain("Orden de trabajo N.º 0048");
+    expect(pages[1]).not.toContain("Presupuesto N.º 0048");
+    // Las plantillas del catálogo siguen diciendo "Presupuesto"
+    const cat = await extractPdfPages(
+      await renderQuotePdf(catalogQuote(35), {
+        templateId: "minimalista",
+        showBrand: true,
+        allowCustomColor: false,
+      }),
+    );
+    expect(cat[1]).toContain("Presupuesto N.º 0001");
+  }, 60_000);
+
+  it("normaliza cantidades y unidades y respeta las personalizadas", async () => {
+    const taller = await textOf(demoDocument("taller-mecanico"));
+    expect(taller).toContain("2 unidades");
+    expect(taller).toContain("1 juego");
+    expect(taller).toContain("3,5 h");
+    expect(taller).toContain("80.450 km");
+    const obra = await textOf(demoDocument("construccion"));
+    expect(obra).toContain("12 bolsas");
+    expect(obra).toContain("38 m²");
+    expect(obra).toContain("12 jornales");
+    const doc = demoDocument("servicios-tecnicos");
+    doc.quote.items[0] = { ...doc.quote.items[0], quantity: "3", unit: "Tanda de pintura" };
+    expect(await textOf(doc)).toContain("3 Tanda de pintura");
+  }, 60_000);
+
+  it("no repite el título de una sección con un único campo del mismo nombre", async () => {
+    const doc = demoDocument("taller-mecanico");
+    const model = buildPdfModel(doc.quote, { ...opts(doc), preview: false });
+    const titles = model.custom!.blocks.map((b) => b.title);
+    expect(titles).toContain("Datos del vehículo");
+    expect(titles).not.toContain("Diagnóstico");
+    expect(model.custom!.blocks.some((b) => b.rows.some((r) => r.label === "Diagnóstico"))).toBe(
+      true,
+    );
+    // Con más de un campo, el título se conserva
+    const servicio = buildPdfModel(demoDocument("servicios-tecnicos").quote, {
+      ...opts(demoDocument("servicios-tecnicos")),
+    });
+    expect(servicio.custom!.blocks.map((b) => b.title)).toContain("Servicio");
+  });
+
+  it("la densidad compacta usa menos espacio sin forzar una sola página", async () => {
+    const standard = demoDocument("construccion", 35);
+    const compact = demoDocument("construccion", { itemCount: 35, compact: true });
+    expect(standard.config.style.density).toBe("standard");
+    expect(compact.config.style.density).toBe("compact");
+    const pagesStd = (await extractPdfPages(await renderQuotePdf(standard.quote, opts(standard))))
+      .length;
+    const pagesCmp = (await extractPdfPages(await renderQuotePdf(compact.quote, opts(compact))))
+      .length;
+    expect(pagesCmp).toBeLessThanOrEqual(pagesStd);
+    const big = demoDocument("construccion", { itemCount: 100, compact: true });
+    expect(
+      (await extractPdfPages(await renderQuotePdf(big.quote, opts(big)))).length,
+    ).toBeGreaterThan(1);
+  }, 60_000);
+
+  it("los documentos de demostración se identifican como tales en cada página", async () => {
+    const doc = demoDocument("servicios-tecnicos", 35);
+    const pages = await extractPdfPages(await renderQuotePdf(doc.quote, opts(doc)));
+    pages.forEach((p) => expect(p).toContain("MUESTRA DE DEMOSTRACIÓN"));
+  }, 60_000);
+
+  it("las demostraciones en USD usan precios propios en dólares, sin conversión", async () => {
+    for (const d of DEMO_TEMPLATES) {
+      const ars = demoDocument(d.key);
+      const usd = demoDocument(d.key, { currency: "USD" });
+      expect(usd.quote.currency).toBe("USD");
+      const arsTotal = Number(calculateTotals(ars.quote).total);
+      const usdTotal = Number(calculateTotals(usd.quote).total);
+      // En dólares los importes son del orden de decenas/cientos/miles, no los de pesos
+      expect(usdTotal).toBeGreaterThan(50);
+      expect(usdTotal).toBeLessThan(10_000);
+      // La relación implícita con los pesos es la de un tipo de cambio plausible (1.000–1.800)
+      expect(arsTotal / usdTotal).toBeGreaterThan(1000);
+      expect(arsTotal / usdTotal).toBeLessThan(1800);
+      for (const it of usd.quote.items) expect(Number(it.unitPrice)).toBeLessThan(2000);
+    }
+    const text = await textOf(demoDocument("construccion", { currency: "USD" }));
+    expect(text).toContain("US$");
+    expect(text).not.toContain("185.000");
+  }, 60_000);
+});
+
+// Utilidad de desarrollo: PDF_SAMPLES_DIR=<carpeta> genera las muestras comerciales (DEMO-*) y,
+// por separado, los casos extremos para revisarlos a ojo. No se versionan.
 describe.runIf(process.env.PDF_SAMPLES_DIR)(
   "volcado de muestras comerciales y casos extremos",
   () => {
     it("escribe los PDF", async () => {
       const dir = process.env.PDF_SAMPLES_DIR!;
-      mkdirSync(path.join(dir, "casos-extremos"), { recursive: true });
-      const opts = (doc: ReturnType<typeof demoDocument>) => ({
-        templateId: DEMO_TEMPLATE_ID,
-        showBrand: false,
-        allowCustomColor: true,
-        custom: doc.config,
-      });
+      const edge = path.join(dir, "casos-extremos");
+      mkdirSync(edge, { recursive: true });
+      type Doc = ReturnType<typeof demoDocument>;
+      const render = (doc: Doc) =>
+        renderQuotePdf(doc.quote, {
+          templateId: DEMO_TEMPLATE_ID,
+          showBrand: false,
+          allowCustomColor: true,
+          custom: doc.config,
+        });
+      const write = async (file: string, doc: Doc) => writeFileSync(file, await render(doc));
+
+      // Muestras comerciales (para difusión): identificadas como DEMO; estándar, compacta y USD.
       for (const d of DEMO_TEMPLATES) {
-        const doc = demoDocument(d.key);
-        writeFileSync(path.join(dir, `${d.key}.pdf`), await renderQuotePdf(doc.quote, opts(doc)));
-        const big = demoDocument(d.key, 35);
-        writeFileSync(
-          path.join(dir, `${d.key}-multipagina.pdf`),
-          await renderQuotePdf(big.quote, opts(big)),
+        await write(path.join(dir, `DEMO-${d.key}.pdf`), demoDocument(d.key));
+        await write(
+          path.join(dir, `DEMO-${d.key}-compacto.pdf`),
+          demoDocument(d.key, { compact: true }),
         );
+        await write(
+          path.join(dir, `DEMO-${d.key}-usd.pdf`),
+          demoDocument(d.key, { currency: "USD" }),
+        );
+        await write(path.join(dir, `DEMO-${d.key}-multipagina.pdf`), demoDocument(d.key, 35));
         for (const n of [1, 5, 10, 100]) {
-          const x = demoDocument(d.key, n);
-          writeFileSync(
-            path.join(dir, "casos-extremos", `${d.key}-${n}-conceptos.pdf`),
-            await renderQuotePdf(x.quote, opts(x)),
-          );
+          await write(path.join(edge, `${d.key}-${n}-conceptos.pdf`), demoDocument(d.key, n));
         }
+        await write(
+          path.join(edge, `${d.key}-35-conceptos-compacto.pdf`),
+          demoDocument(d.key, { compact: true, itemCount: 35 }),
+        );
       }
 
       const extreme = async (
         name: string,
-        tweak: (doc: ReturnType<typeof demoDocument>) => void,
+        tweak: (doc: Doc) => void,
         key: (typeof DEMO_TEMPLATES)[number]["key"] = "taller-mecanico",
+        options: Parameters<typeof demoDocument>[1] = 14,
       ) => {
-        const doc = demoDocument(key, 14);
+        const doc = demoDocument(key, options);
         tweak(doc);
-        writeFileSync(
-          path.join(dir, "casos-extremos", `${name}.pdf`),
-          await renderQuotePdf(doc.quote, opts(doc)),
-        );
+        await write(path.join(edge, `${name}.pdf`), doc);
       };
       await extreme("nombres-y-textos-largos", (d) => {
         d.quote.issuer.businessName =
@@ -293,18 +402,22 @@ describe.runIf(process.env.PDF_SAMPLES_DIR)(
         d.quote.deliveryTime = "";
       });
       await extreme("sin-condiciones-comerciales", (d) => {
-        (d.config.style as unknown as Record<string, unknown>).showTerms = false;
-        (d.config.style as unknown as Record<string, unknown>).approval = false;
+        Object.assign(d.config.style, { showTerms: false, approval: false });
       });
-      await extreme("usd-con-descuento-e-impuestos", (d) => {
-        d.quote.currency = "USD";
-        d.quote.globalDiscount = { type: "percent", value: "8" };
-        d.quote.surcharge = { type: "fixed", value: "25" };
-        d.quote.taxes = [
-          { id: "iva", label: "IVA 21%", type: "percent", value: "21" },
-          { id: "iibb", label: "Percepción IIBB 3%", type: "percent", value: "3" },
-        ];
-      });
+      // USD realista (precios propios en dólares, sin conversión) con descuento, recargo e impuestos.
+      await extreme(
+        "usd-con-descuento-e-impuestos",
+        (d) => {
+          d.quote.globalDiscount = { type: "percent", value: "8" };
+          d.quote.surcharge = { type: "fixed", value: "25" };
+          d.quote.taxes = [
+            { id: "iva", label: "IVA 21%", type: "percent", value: "21" },
+            { id: "iibb", label: "Percepción IIBB 3%", type: "percent", value: "3" },
+          ];
+        },
+        "taller-mecanico",
+        { currency: "USD" },
+      );
       for (const kind of ["ancho", "alto", "engranaje"] as LogoKind[]) {
         await extreme(
           `logo-${kind}`,
@@ -312,6 +425,7 @@ describe.runIf(process.env.PDF_SAMPLES_DIR)(
             d.quote.issuer.logo = demoLogo(kind);
           },
           "servicios-tecnicos",
+          { currency: "USD" },
         );
       }
       // Plantillas del catálogo con la identidad ficticia y 35 conceptos
@@ -319,7 +433,7 @@ describe.runIf(process.env.PDF_SAMPLES_DIR)(
         const doc = demoDocument("taller-mecanico", 35);
         doc.quote.templateId = t.id;
         writeFileSync(
-          path.join(dir, "casos-extremos", `catalogo-${t.id}-35.pdf`),
+          path.join(edge, `catalogo-${t.id}-35.pdf`),
           await renderQuotePdf(doc.quote, {
             templateId: t.id,
             showBrand: t.tier === "free",

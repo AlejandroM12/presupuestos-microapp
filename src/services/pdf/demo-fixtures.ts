@@ -4,7 +4,7 @@ import { calculateTotals } from "@/domain/quote/calculations";
 import { defaultQuote } from "@/domain/quote/defaults";
 import { quoteSchema, type Quote } from "@/domain/quote/schema";
 import { formatMoney } from "@/lib/format";
-import { DEMO_TEMPLATES, type DemoTemplateData } from "./demo-data";
+import { DEMO_TEMPLATES, DEMO_USD, type DemoTemplateData } from "./demo-data";
 import type { CustomRenderConfig } from "./model";
 
 export { DEMO_TEMPLATES };
@@ -131,7 +131,20 @@ export interface DemoDocument {
   values: Record<string, string | number | boolean>;
 }
 
-function build(data: DemoTemplateData, itemCount?: number): DemoDocument {
+export interface DemoOptions {
+  /** Cantidad de conceptos (para pruebas de volumen); por defecto, los de la demostración. */
+  itemCount?: number;
+  /** Variante en USD con precios propios (sin conversión automática). */
+  currency?: "ARS" | "USD";
+  /** Densidad compacta de la plantilla privada. */
+  compact?: boolean;
+}
+
+/** Leyenda que identifica los documentos como demostración (visible en cada página). */
+export const DEMO_LABEL = "MUESTRA DE DEMOSTRACIÓN · datos ficticios";
+
+function build(data: DemoTemplateData, options: DemoOptions = {}): DemoDocument {
+  const { itemCount, currency = "ARS", compact = false } = options;
   const q = defaultQuote(new Date(2026, 10, 19));
   q.number = "0048";
   q.title = data.title;
@@ -142,7 +155,12 @@ function build(data: DemoTemplateData, itemCount?: number): DemoDocument {
   q.terms = data.terms;
   q.deliveryTime = data.deliveryTime;
   q.taxes = data.taxes;
-  const base = data.items.map((it, i) => ({
+  const usd = currency === "USD" ? DEMO_USD[data.key] : undefined;
+  if (usd) {
+    q.currency = "USD";
+    q.taxes = usd.taxes ?? [];
+  }
+  const base = (usd ? usd.items : data.items).map((it, i) => ({
     id: `demo-${i}`,
     description: it.description,
     quantity: it.quantity,
@@ -169,17 +187,31 @@ function build(data: DemoTemplateData, itemCount?: number): DemoDocument {
     values.anticipo = Math.round(advance * 100) / 100;
     q.paymentTerms = data.paymentTerms.replace(
       "{anticipo}",
-      formatMoney(String(values.anticipo), "ARS"),
+      formatMoney(String(values.anticipo), currency),
     );
   }
   const parsed = quoteSchema.parse({ ...q, customFieldValues: values });
-  const config = { name: data.name, ...parseCustomTemplateConfig(data.config) };
+  const style = data.config.style as { footerText?: string };
+  const config = {
+    name: data.name,
+    ...parseCustomTemplateConfig({
+      ...data.config,
+      style: {
+        ...style,
+        footerText: `${DEMO_LABEL} · ${style.footerText ?? ""}`.trim(),
+        density: compact ? "compact" : "standard",
+      },
+    }),
+  };
   return { data, quote: parsed, config, values };
 }
 
-export function demoDocument(key: DemoTemplateData["key"], itemCount?: number): DemoDocument {
+export function demoDocument(
+  key: DemoTemplateData["key"],
+  options: DemoOptions | number = {},
+): DemoDocument {
   const data = DEMO_TEMPLATES.find((d) => d.key === key)!;
-  return build(data, itemCount);
+  return build(data, typeof options === "number" ? { itemCount: options } : options);
 }
 
 export const DEMO_TEMPLATE_ID = "11111111-1111-4111-8111-111111111111";

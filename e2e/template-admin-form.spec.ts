@@ -99,6 +99,7 @@ test("configuración por formulario: campos, secciones, orden, validación y ver
   await admin.getByLabel("Totales", { exact: true }).selectOption("box");
   await admin.getByLabel("Columnas de los campos").selectOption("2");
   await admin.getByLabel("Incluir bloque de aprobación").check();
+  await admin.getByLabel("Densidad").selectOption("compact");
 
   // Sección y campos
   await admin.getByRole("button", { name: "Agregar sección" }).click();
@@ -156,6 +157,7 @@ test("configuración por formulario: campos, secciones, orden, validación y ver
   expect(style).toContain('"tableStyle":"zebra"');
   expect(style).toContain('"totalsStyle":"box"');
   expect(style).toContain('"approval":true');
+  expect(style).toContain('"density":"compact"');
   expect(stored).toContain('"highlight":true');
 
   // Eliminar un campo

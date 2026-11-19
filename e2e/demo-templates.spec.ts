@@ -16,7 +16,7 @@ async function act(page: Page, name: string) {
 }
 
 const PASSWORD = "clave-e2e-segura-1";
-const OUT_DIR = path.resolve("examples", "demo-pdfs");
+const OUT_DIR = path.resolve("examples", "e2e-pdfs");
 const unique = (tag: string) =>
   `${tag}-${Date.now()}-${Math.floor(Math.random() * 1e6)}@e2e.example`;
 
