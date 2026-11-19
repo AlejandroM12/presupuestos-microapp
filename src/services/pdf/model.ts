@@ -1,4 +1,5 @@
 import { calculateTotals } from "@/domain/quote/calculations";
+import { D } from "@/domain/quote/decimal";
 import { validUntil } from "@/domain/quote/defaults";
 import type { Quote } from "@/domain/quote/schema";
 import type { Currency, QuoteTotals } from "@/domain/quote/types";
@@ -30,9 +31,29 @@ export interface CustomRenderConfig {
   sections: CustomSectionConfig[];
 }
 
+export interface CustomFieldRow {
+  label: string;
+  value: string;
+  /** Ocupa todo el ancho aunque la sección tenga dos columnas (textos largos). */
+  wide: boolean;
+}
+
 export interface CustomFieldBlock {
   title: string;
-  rows: { label: string; value: string }[];
+  /** Columnas efectivas de la sección (1 o 2). */
+  columns: 1 | 2;
+  rows: CustomFieldRow[];
+}
+
+export interface CustomHighlight {
+  label: string;
+  value: string;
+}
+
+export interface CustomAdvance {
+  label: string;
+  amount: string;
+  balance: string;
 }
 
 export interface PdfItemRow {
@@ -60,50 +81,102 @@ export interface PdfModel {
   hasDiscount: boolean;
   hasSurcharge: boolean;
   /** Presente solo al renderizar una plantilla privada. */
-  custom?: { name: string; style: CustomStyleConfig; blocks: CustomFieldBlock[] };
+  custom?: {
+    name: string;
+    style: CustomStyleConfig;
+    blocks: CustomFieldBlock[];
+    highlights: CustomHighlight[];
+    advance?: CustomAdvance;
+  };
 }
 
-/** Formatea los valores de campos personalizados que deben verse en el PDF, agrupados por sección. */
-export function buildCustomBlocks(
+const groupedFormat = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 2 });
+const plainFormat = new Intl.NumberFormat("es-AR", {
+  maximumFractionDigits: 2,
+  useGrouping: false,
+});
+/** Separador de miles solo desde 10.000: un año (2021) o un código no deben verse como "2.021". */
+const numberFormat = {
+  format: (n: number) => (Math.abs(n) >= 10000 ? groupedFormat : plainFormat).format(n),
+};
+
+function formatFieldValue(
+  f: CustomFieldConfig,
+  v: string | number | boolean | null | undefined,
+  money: (v: string) => string,
+): string | null {
+  if (v === undefined || v === null || v === "") return null;
+  switch (f.type) {
+    case "checkbox":
+      return v ? "Sí" : null;
+    case "money":
+      return money(String(v));
+    case "number": {
+      const n = Number(v);
+      const text = Number.isFinite(n) ? numberFormat.format(n) : String(v);
+      return f.unit ? `${text} ${f.unit}` : text;
+    }
+    case "date":
+      return formatDateAr(String(v));
+    default:
+      return f.unit ? `${String(v)} ${f.unit}` : String(v);
+  }
+}
+
+/** Resultado de aplicar la configuración de una plantilla privada a los valores de un presupuesto. */
+export function buildCustomView(
   config: CustomRenderConfig,
   values: Quote["customFieldValues"],
   money: (v: string) => string,
-): CustomFieldBlock[] {
+  total: string,
+): NonNullable<PdfModel["custom"]> {
   const sections = [...config.sections].sort((a, b) => a.position - b.position);
-  const visible = [...config.fields]
+  const fields = [...config.fields]
     .filter((f) => f.showInPdf)
     .sort((a, b) => a.position - b.position);
 
-  const format = (f: CustomFieldConfig): string | null => {
-    const v = values[f.id];
-    if (v === undefined || v === null || v === "") return null;
-    switch (f.type) {
-      case "checkbox":
-        return v ? "Sí" : null;
-      case "money":
-        return money(String(v));
-      case "date":
-        return formatDateAr(String(v));
-      default:
-        return String(v);
-    }
-  };
-
-  const groups: { id: string | undefined; title: string }[] = [
-    ...sections.map((s) => ({ id: s.id, title: s.title })),
-    { id: undefined, title: "" },
-  ];
-  const blocks: CustomFieldBlock[] = [];
-  for (const g of groups) {
-    const rows = visible
-      .filter((f) =>
-        g.id === undefined ? !sections.some((s) => s.id === f.sectionId) : f.sectionId === g.id,
-      )
-      .map((f) => ({ label: f.label, value: format(f) }))
-      .filter((r): r is { label: string; value: string } => r.value !== null);
-    if (rows.length > 0) blocks.push({ title: g.title, rows });
+  // Anticipo: el importe del campo con rol "advance" y el saldo pendiente calculado con decimales.
+  let advance: CustomAdvance | undefined;
+  const advField = fields.find((f) => f.role === "advance");
+  const advRaw = advField ? values[advField.id] : undefined;
+  if (advField && advRaw !== undefined && advRaw !== null && advRaw !== "") {
+    const amount = new D(String(advRaw).replace(",", "."));
+    const balance = D.max(new D(total).minus(amount), 0);
+    advance = {
+      label: advField.label,
+      amount: money(amount.toFixed(2)),
+      balance: money(balance.toFixed(2)),
+    };
   }
-  return blocks;
+
+  const highlights: CustomHighlight[] = [];
+  const rowsOf = (list: CustomFieldConfig[]): CustomFieldRow[] =>
+    list.flatMap((f) => {
+      if (f.role === "advance") return [];
+      const value = formatFieldValue(f, values[f.id], money);
+      if (value === null) return [];
+      if (f.highlight && highlights.length < 4) {
+        highlights.push({ label: f.label, value });
+        return [];
+      }
+      return [{ label: f.label, value, wide: f.type === "textarea" }];
+    });
+
+  const inSection = (id: string) => fields.filter((f) => f.sectionId === id);
+  const loose = fields.filter((f) => !sections.some((s) => s.id === f.sectionId));
+  const blocks: CustomFieldBlock[] = [];
+  // Las fichas se reúnen primero para respetar el orden aunque estén en secciones distintas.
+  const bySection = sections.map((s) => ({ s, rows: rowsOf(inSection(s.id)) }));
+  const looseRows = rowsOf(loose);
+  for (const { s, rows } of bySection) {
+    if (rows.length > 0) {
+      blocks.push({ title: s.title, columns: s.columns ?? config.style.sectionColumns, rows });
+    }
+  }
+  if (looseRows.length > 0) {
+    blocks.push({ title: "", columns: config.style.sectionColumns, rows: looseRows });
+  }
+  return { name: config.name, style: config.style, blocks, highlights, advance };
 }
 
 export function resolveTemplate(id: string): TemplateMeta {
@@ -145,11 +218,7 @@ export function buildPdfModel(quote: Quote, options: PdfRenderOptions): PdfModel
     hasDiscount: Number(totals.globalDiscount) > 0,
     hasSurcharge: Number(totals.surcharge) > 0,
     custom: options.custom
-      ? {
-          name: options.custom.name,
-          style: options.custom.style,
-          blocks: buildCustomBlocks(options.custom, quote.customFieldValues, money),
-        }
+      ? buildCustomView(options.custom, quote.customFieldValues, money, totals.total)
       : undefined,
   };
 }

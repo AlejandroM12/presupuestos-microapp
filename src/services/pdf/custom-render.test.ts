@@ -65,7 +65,7 @@ describe("plantilla privada", () => {
     expect(text).toContain("Taller Rojas · Mecánica integral");
     expect(compact).toContain("DATOSDELVEHÍCULO");
     expect(text).toContain("AB123CD");
-    expect(text).toContain("85000");
+    expect(text).toContain("85.000");
     expect(text).toContain("02/05/2026");
     expect(text).toContain("Cobertura de seguro");
     expect(text).toContain("Garantía de 90 días");

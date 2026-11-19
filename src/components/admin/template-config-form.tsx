@@ -21,6 +21,23 @@ const TYPE_LABELS: Record<CustomFieldType, string> = {
   money: "Importe",
 };
 
+const HEADER_LABELS = {
+  classic: "Clásico (logo y datos a la izquierda)",
+  banner: "Banda de color a todo el ancho",
+  boxed: "Ficha del documento a la derecha",
+} as const;
+const TABLE_LABELS = {
+  tinted: "Encabezado con fondo suave",
+  lines: "Líneas simples",
+  zebra: "Encabezado de color y filas alternadas",
+  grid: "Cuadrícula",
+} as const;
+const TOTALS_LABELS = {
+  bar: "Barra de color",
+  box: "Recuadro",
+  plain: "Línea simple",
+} as const;
+
 const FONT_LABELS = {
   sans: "Moderna (Inter)",
   serif: "Clásica con serif (Lora)",
@@ -39,12 +56,18 @@ interface FieldDraft {
   showInPdf: boolean;
   sectionId: string;
   options: string;
+  highlight: boolean;
+  unit: string;
+  /** Solo importes: se muestra como anticipo y se calcula el saldo pendiente. */
+  advance: boolean;
 }
 interface SectionDraft {
   id: string;
   locked: boolean;
   title: string;
   description: string;
+  /** "" = usa la distribución del estilo. */
+  columns: "" | "1" | "2";
 }
 interface StyleDraft {
   accentColor: string;
@@ -53,6 +76,13 @@ interface StyleDraft {
   headerSubtitle: string;
   footerText: string;
   showLogo: boolean;
+  headerVariant: keyof typeof HEADER_LABELS;
+  tableStyle: keyof typeof TABLE_LABELS;
+  totalsStyle: keyof typeof TOTALS_LABELS;
+  sectionColumns: "1" | "2";
+  showTerms: boolean;
+  approval: boolean;
+  approvalText: string;
 }
 interface Draft {
   style: StyleDraft;
@@ -61,8 +91,14 @@ interface Draft {
 }
 
 type RawConfig = {
-  style?: Partial<StyleDraft>;
-  sections?: { id: string; title: string; description?: string; position?: number }[];
+  style?: Partial<Omit<StyleDraft, "sectionColumns">> & { sectionColumns?: 1 | 2 };
+  sections?: {
+    id: string;
+    title: string;
+    description?: string;
+    position?: number;
+    columns?: 1 | 2;
+  }[];
   fields?: {
     id: string;
     label: string;
@@ -74,6 +110,9 @@ type RawConfig = {
     sectionId?: string;
     options?: string[];
     position?: number;
+    highlight?: boolean;
+    unit?: string;
+    role?: "advance";
   }[];
 };
 
@@ -102,12 +141,20 @@ function fromConfig(raw: RawConfig): Draft {
       headerSubtitle: raw.style?.headerSubtitle ?? "",
       footerText: raw.style?.footerText ?? "",
       showLogo: raw.style?.showLogo ?? true,
+      headerVariant: raw.style?.headerVariant ?? "classic",
+      tableStyle: raw.style?.tableStyle ?? "tinted",
+      totalsStyle: raw.style?.totalsStyle ?? "bar",
+      sectionColumns: String(raw.style?.sectionColumns ?? 1) as "1" | "2",
+      showTerms: raw.style?.showTerms ?? true,
+      approval: raw.style?.approval ?? false,
+      approvalText: raw.style?.approvalText ?? "",
     },
     sections: byPos(raw.sections ?? []).map((s) => ({
       id: s.id,
       locked: true,
       title: s.title,
       description: s.description ?? "",
+      columns: s.columns ? (String(s.columns) as "1" | "2") : "",
     })),
     fields: byPos(raw.fields ?? []).map((f) => ({
       id: f.id,
@@ -120,6 +167,9 @@ function fromConfig(raw: RawConfig): Draft {
       showInPdf: f.showInPdf ?? true,
       sectionId: f.sectionId ?? "",
       options: (f.options ?? []).join("\n"),
+      highlight: f.highlight ?? false,
+      unit: f.unit ?? "",
+      advance: f.role === "advance",
     })),
   };
 }
@@ -129,11 +179,13 @@ function toConfig(d: Draft) {
     style: {
       ...d.style,
       accentColor: d.style.accentColor || undefined,
+      sectionColumns: Number(d.style.sectionColumns),
     },
     sections: d.sections.map((s, i) => ({
       id: s.id,
       title: s.title,
       description: s.description,
+      columns: s.columns ? Number(s.columns) : undefined,
       position: i,
     })),
     fields: d.fields.map((f, i) => {
@@ -160,6 +212,9 @@ function toConfig(d: Draft) {
                 .filter(Boolean)
             : undefined,
         position: i,
+        highlight: f.highlight,
+        unit: f.unit || undefined,
+        role: f.advance && f.type === "money" ? ("advance" as const) : undefined,
       };
     }),
   };
@@ -266,6 +321,9 @@ export function TemplateConfigForm({
             showInPdf: true,
             sectionId: "",
             options: "",
+            highlight: false,
+            unit: "",
+            advance: false,
           },
         ],
       };
@@ -284,7 +342,10 @@ export function TemplateConfigForm({
       const id = slugId("seccion", new Set(d.sections.map((s) => s.id)));
       return {
         ...d,
-        sections: [...d.sections, { id, locked: false, title: "Nueva sección", description: "" }],
+        sections: [
+          ...d.sections,
+          { id, locked: false, title: "Nueva sección", description: "", columns: "" },
+        ],
       };
     });
   }
@@ -461,6 +522,92 @@ export function TemplateConfigForm({
               />
               Mostrar el logo del negocio
             </label>
+            <Field label="Encabezado" htmlFor="hvariant">
+              <Select
+                id="hvariant"
+                value={draft.style.headerVariant}
+                onChange={(e) =>
+                  setStyle({ headerVariant: e.target.value as StyleDraft["headerVariant"] })
+                }
+              >
+                {Object.entries(HEADER_LABELS).map(([v, l]) => (
+                  <option key={v} value={v}>
+                    {l}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="Tabla de conceptos" htmlFor="tstyle">
+              <Select
+                id="tstyle"
+                value={draft.style.tableStyle}
+                onChange={(e) =>
+                  setStyle({ tableStyle: e.target.value as StyleDraft["tableStyle"] })
+                }
+              >
+                {Object.entries(TABLE_LABELS).map(([v, l]) => (
+                  <option key={v} value={v}>
+                    {l}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="Totales" htmlFor="totstyle">
+              <Select
+                id="totstyle"
+                value={draft.style.totalsStyle}
+                onChange={(e) =>
+                  setStyle({ totalsStyle: e.target.value as StyleDraft["totalsStyle"] })
+                }
+              >
+                {Object.entries(TOTALS_LABELS).map(([v, l]) => (
+                  <option key={v} value={v}>
+                    {l}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="Columnas de los campos" htmlFor="scols">
+              <Select
+                id="scols"
+                value={draft.style.sectionColumns}
+                onChange={(e) => setStyle({ sectionColumns: e.target.value as "1" | "2" })}
+              >
+                <option value="1">Una columna</option>
+                <option value="2">Dos columnas</option>
+              </Select>
+            </Field>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={draft.style.showTerms}
+                onChange={(e) => setStyle({ showTerms: e.target.checked })}
+              />
+              Mostrar observaciones y condiciones comerciales
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={draft.style.approval}
+                onChange={(e) => setStyle({ approval: e.target.checked })}
+              />
+              Incluir bloque de aprobación (firma, aclaración y fecha)
+            </label>
+            {draft.style.approval && (
+              <Field
+                label="Título del bloque de aprobación"
+                htmlFor="apptext"
+                className="sm:col-span-2"
+              >
+                <Input
+                  id="apptext"
+                  value={draft.style.approvalText}
+                  maxLength={200}
+                  placeholder="Aprobación del cliente"
+                  onChange={(e) => setStyle({ approvalText: e.target.value })}
+                />
+              </Field>
+            )}
           </fieldset>
 
           <fieldset className="space-y-3 rounded-lg border border-border p-4">
@@ -484,6 +631,17 @@ export function TemplateConfigForm({
                     maxLength={120}
                     onChange={(e) => setSection(i, { title: e.target.value })}
                   />
+                </Field>
+                <Field label="Columnas" htmlFor={`col-${s.id}`}>
+                  <Select
+                    id={`col-${s.id}`}
+                    value={s.columns}
+                    onChange={(e) => setSection(i, { columns: e.target.value as "" | "1" | "2" })}
+                  >
+                    <option value="">Como el estilo</option>
+                    <option value="1">Una</option>
+                    <option value="2">Dos</option>
+                  </Select>
                 </Field>
                 <RowButtons
                   label={`sección ${i + 1}`}
@@ -608,6 +766,37 @@ export function TemplateConfigForm({
                       />
                       Mostrar en el PDF
                     </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={f.highlight}
+                        onChange={(e) => setField(i, { highlight: e.target.checked })}
+                      />
+                      Ficha destacada
+                    </label>
+                    {f.type === "money" && (
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={f.advance}
+                          onChange={(e) => setField(i, { advance: e.target.checked })}
+                        />
+                        Es el anticipo (calcula el saldo)
+                      </label>
+                    )}
+                    {(f.type === "number" || f.type === "text") && (
+                      <label className="flex items-center gap-2">
+                        Unidad
+                        <Input
+                          aria-label={`Unidad del campo ${i + 1}`}
+                          value={f.unit}
+                          maxLength={12}
+                          placeholder="km, m²…"
+                          className="h-8 w-24"
+                          onChange={(e) => setField(i, { unit: e.target.value })}
+                        />
+                      </label>
+                    )}
                     <span className="text-xs text-muted-foreground">id: {f.id}</span>
                   </div>
                   <RowButtons

@@ -13,6 +13,12 @@ export const CUSTOM_FIELD_TYPES = [
 
 export type CustomFieldType = (typeof CUSTOM_FIELD_TYPES)[number];
 
+/** Variantes estructurales permitidas: son datos, no código ni HTML. */
+export const HEADER_VARIANTS = ["classic", "banner", "boxed"] as const;
+export const TABLE_STYLES = ["tinted", "lines", "zebra", "grid"] as const;
+export const TOTALS_STYLES = ["bar", "box", "plain"] as const;
+export const FIELD_ROLES = ["advance"] as const;
+
 const fieldId = z
   .string()
   .trim()
@@ -33,6 +39,12 @@ export const customFieldSchema = z.object({
   max: z.number().optional(),
   showInPdf: z.boolean().default(true),
   sectionId: z.string().trim().max(64).optional(),
+  /** Muestra el valor como ficha destacada bajo el encabezado (máximo 4 por documento). */
+  highlight: z.boolean().optional().default(false),
+  /** Sufijo de unidad que se imprime junto al valor (p. ej. "km", "m²"). */
+  unit: z.string().trim().max(12).optional(),
+  /** "advance": el importe se muestra como anticipo y se calcula el saldo pendiente. */
+  role: z.enum(FIELD_ROLES).optional(),
 });
 
 export const customSectionSchema = z.object({
@@ -41,6 +53,8 @@ export const customSectionSchema = z.object({
   description: z.string().max(500).optional().default(""),
   position: z.number().int().min(0).max(999).default(0),
   collapsible: z.boolean().default(false),
+  /** Distribución de los campos de la sección; si falta se usa la del estilo. */
+  columns: z.union([z.literal(1), z.literal(2)]).optional(),
 });
 
 export const customStyleSchema = z.object({
@@ -53,13 +67,39 @@ export const customStyleSchema = z.object({
   headerSubtitle: z.string().max(200).optional().default(""),
   footerText: z.string().max(300).optional().default(""),
   showLogo: z.boolean().optional().default(true),
+  headerVariant: z.enum(HEADER_VARIANTS).optional().default("classic"),
+  tableStyle: z.enum(TABLE_STYLES).optional().default("tinted"),
+  totalsStyle: z.enum(TOTALS_STYLES).optional().default("bar"),
+  sectionColumns: z
+    .union([z.literal(1), z.literal(2)])
+    .optional()
+    .default(1),
+  /** Muestra observaciones y condiciones comerciales del presupuesto. */
+  showTerms: z.boolean().optional().default(true),
+  /** Bloque de aprobación del cliente (firma, aclaración, fecha). */
+  approval: z.boolean().optional().default(false),
+  approvalText: z.string().max(200).optional().default(""),
 });
 
-export const customTemplateConfigSchema = z.object({
-  style: customStyleSchema.default(() => customStyleSchema.parse({})),
-  fields: z.array(customFieldSchema).max(80).default([]),
-  sections: z.array(customSectionSchema).max(30).default([]),
-});
+export const customTemplateConfigSchema = z
+  .object({
+    style: customStyleSchema.default(() => customStyleSchema.parse({})),
+    fields: z.array(customFieldSchema).max(80).default([]),
+    sections: z.array(customSectionSchema).max(30).default([]),
+  })
+  .superRefine((cfg, ctx) => {
+    if (cfg.fields.filter((f) => f.highlight).length > 4) {
+      ctx.addIssue({ code: "custom", path: ["fields"], message: "Máximo 4 fichas destacadas" });
+    }
+    const advance = cfg.fields.filter((f) => f.role === "advance");
+    if (advance.length > 1 || advance.some((f) => f.type !== "money")) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["fields"],
+        message: "Solo un campo de importe puede ser el anticipo",
+      });
+    }
+  });
 
 export type CustomFieldConfig = z.infer<typeof customFieldSchema>;
 export type CustomSectionConfig = z.infer<typeof customSectionSchema>;

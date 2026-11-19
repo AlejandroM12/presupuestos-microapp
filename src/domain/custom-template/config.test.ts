@@ -60,4 +60,59 @@ describe("custom template config", () => {
       values: { patente: "AB123CD", km: 12000, tipo: "Service" },
     });
   });
+
+  it("las opciones estructurales nuevas son opcionales y tienen valores por defecto", () => {
+    const cfg = parseCustomTemplateConfig({ fields: [{ id: "a", label: "A", type: "text" }] });
+    expect(cfg.style).toMatchObject({
+      headerVariant: "classic",
+      tableStyle: "tinted",
+      totalsStyle: "bar",
+      sectionColumns: 1,
+      showTerms: true,
+      approval: false,
+    });
+    expect(cfg.fields[0]).toMatchObject({ highlight: false });
+  });
+
+  it("acepta variantes válidas y rechaza valores desconocidos", () => {
+    expect(
+      parseCustomTemplateConfig({
+        style: {
+          headerVariant: "banner",
+          tableStyle: "grid",
+          totalsStyle: "box",
+          sectionColumns: 2,
+        },
+        sections: [{ id: "s", title: "S", columns: 2 }],
+      }).style.headerVariant,
+    ).toBe("banner");
+    expect(() => parseCustomTemplateConfig({ style: { headerVariant: "<script>" } })).toThrow();
+    expect(() => parseCustomTemplateConfig({ style: { tableStyle: "fancy" } })).toThrow();
+    expect(() => parseCustomTemplateConfig({ style: { sectionColumns: 3 } })).toThrow();
+  });
+
+  it("limita las fichas destacadas a 4 y el anticipo a un único importe", () => {
+    const f = (id: string) => ({ id, label: id, type: "text", highlight: true });
+    expect(() => parseCustomTemplateConfig({ fields: ["a", "b", "c", "d", "e"].map(f) })).toThrow(
+      /fichas/,
+    );
+    expect(() =>
+      parseCustomTemplateConfig({
+        fields: [{ id: "x", label: "X", type: "text", role: "advance" }],
+      }),
+    ).toThrow(/anticipo/);
+    expect(() =>
+      parseCustomTemplateConfig({
+        fields: [
+          { id: "x", label: "X", type: "money", role: "advance" },
+          { id: "y", label: "Y", type: "money", role: "advance" },
+        ],
+      }),
+    ).toThrow(/anticipo/);
+    expect(
+      parseCustomTemplateConfig({
+        fields: [{ id: "x", label: "X", type: "money", role: "advance" }],
+      }).fields[0].role,
+    ).toBe("advance");
+  });
 });
