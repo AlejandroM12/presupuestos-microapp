@@ -8,6 +8,7 @@
 #   PG_DOCKER_NETWORK       red Docker desde la que se alcanza la base (opcional)
 #   OFFSITE_RCLONE_REMOTE   destino externo en formato rclone, p. ej. "hetzner:bucket/presupuestos"
 #   RCLONE_CONFIG_FILE      ruta a un rclone.conf (permisos 600) con ese remoto
+#   OFFSITE_RETENTION_DAYS  días de retención de la copia externa (def. 60)
 #   ALERT_WEBHOOK_URL       alerta ante fallos (ver lib-alert.sh)
 # Programar con cron: 15 3 * * * cd /opt/atajolab/apps/presupuestos && ./scripts/backup.sh
 set -euo pipefail
@@ -55,6 +56,8 @@ if [ -n "${OFFSITE_RCLONE_REMOTE:-}" ]; then
     -v "$ABS_DIR:/b:ro" rclone/rclone:1.68 copyto "/b/$(basename "$FILE")" \
     "$OFFSITE_RCLONE_REMOTE/$(basename "$FILE")"
   echo ">> Copia externa subida a $OFFSITE_RCLONE_REMOTE"
+  # Retención remota: borra solo dumps propios (patrón fijo) con más de OFFSITE_RETENTION_DAYS días.
+  docker run --rm     -v "$(cd "$(dirname "$RCLONE_CONFIG_FILE")" && pwd)/$(basename "$RCLONE_CONFIG_FILE"):/config/rclone/rclone.conf:ro"     rclone/rclone:1.68 delete "$OFFSITE_RCLONE_REMOTE" --include 'presupuestos-*.dump'     --min-age "${OFFSITE_RETENTION_DAYS:-60}d"
 else
   echo ">> ADVERTENCIA: OFFSITE_RCLONE_REMOTE no configurado; el backup solo existe en este servidor." >&2
 fi
