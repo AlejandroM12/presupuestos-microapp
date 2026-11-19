@@ -106,16 +106,19 @@ export function issuerLines(m: PdfModel): string[] {
 /** Pie fijo con aviso legal, marca (solo gratis) y número de página. */
 export function PageFooter({
   m,
-  color = "#94a3b8",
+  color = "#64748b",
   font = "Inter",
   left = PAGE_PADDING,
+  maxWidth = 360,
 }: {
   m: PdfModel;
   color?: string;
   font?: string;
   left?: number;
+  /** Ancho máximo del aviso legal (evita chocar con el número de página). */
+  maxWidth?: number;
 }) {
-  const base: Style = { position: "absolute", bottom: 22, fontFamily: font, fontSize: 7, color };
+  const base: Style = { position: "absolute", bottom: 22, fontFamily: font, fontSize: 7.5, color };
   return (
     <>
       {/* lineHeight: 0 anula el interlineado heredado de Page: con un valor truthy react-pdf no dibuja textos `render`. */}
@@ -124,7 +127,7 @@ export function PageFooter({
         style={{ ...base, right: PAGE_PADDING, width: 100, textAlign: "right", lineHeight: 0 }}
         render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`}
       />
-      <View fixed style={{ ...base, left, maxWidth: 360 }}>
+      <View fixed style={{ ...base, left, maxWidth }}>
         <Text>{LEGAL_NOTE}</Text>
         {m.showBrand ? <Text style={{ marginTop: 2 }}>{BRAND_NOTE}</Text> : null}
       </View>

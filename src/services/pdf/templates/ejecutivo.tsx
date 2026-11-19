@@ -8,11 +8,11 @@ import {
   PageFooter,
   PreviewMark,
   readableOn,
-  tableRowChunks,
   termsBlocks,
   tint,
 } from "../common";
 import type { PdfModel } from "../model";
+import { CLOSING_MAX, closingTextLength, ContinuationHeader, PaginatedTable } from "../pagination";
 
 const GOLD = "#b08d57";
 const INK = "#1f2937";
@@ -68,7 +68,7 @@ export function EjecutivoDocument({ m }: { m: PdfModel }) {
     infoRow: { flexDirection: "row", marginTop: 22 },
     infoCol: { flex: 1, paddingRight: 16 },
     heading: { fontFamily: "Lora", fontWeight: 700, fontSize: 10, color: accent, marginBottom: 4 },
-    muted: { color: "#6b7280" },
+    muted: { color: "#4b5563" },
     title: {
       fontFamily: "Lora",
       fontWeight: 700,
@@ -83,9 +83,8 @@ export function EjecutivoDocument({ m }: { m: PdfModel }) {
       borderBottomWidth: 1.5,
       borderBottomColor: GOLD,
       paddingBottom: 5,
-      marginTop: 18,
     },
-    th: { fontFamily: "Lora", fontWeight: 700, fontSize: 8.5, color: accent },
+    th: { lineHeight: 1.2, fontFamily: "Lora", fontWeight: 700, fontSize: 8.5, color: accent },
     row: {
       flexDirection: "row",
       paddingVertical: 7,
@@ -116,7 +115,7 @@ export function EjecutivoDocument({ m }: { m: PdfModel }) {
       color: accent,
       marginBottom: 2,
     },
-    noteText: { fontSize: 8.5, lineHeight: 1.45, color: "#374151" },
+    noteText: { fontSize: 9, lineHeight: 1.45, color: "#374151" },
     noteBox: {
       marginTop: 18,
       borderTopWidth: 1,
@@ -128,6 +127,7 @@ export function EjecutivoDocument({ m }: { m: PdfModel }) {
   return (
     <Document title={`Presupuesto ${q.number}`} author={q.issuer.businessName} language="es-AR">
       <Page size="A4" style={s.page}>
+        <ContinuationHeader m={m} font="Lora" color={accent} muted="#4b5563" />
         <View style={s.band}>
           <View style={{ maxWidth: 320 }}>
             {q.issuer.logo ? (
@@ -178,8 +178,11 @@ export function EjecutivoDocument({ m }: { m: PdfModel }) {
         <Text style={s.title}>{q.title}</Text>
         {q.description ? <Text style={s.description}>{q.description}</Text> : null}
 
-        {tableRowChunks(m.rows).map((chunk, chunkIndex) => (
-          <View key={chunkIndex} wrap={false}>
+        <PaginatedTable
+          gap={18}
+          rows={m.rows}
+          keepClosing={closingTextLength(m) <= CLOSING_MAX}
+          head={
             <View style={s.thead}>
               <Text style={[s.th, s.cDesc]}>Descripción</Text>
               <Text style={[s.th, s.cQty]}>Cantidad</Text>
@@ -187,58 +190,61 @@ export function EjecutivoDocument({ m }: { m: PdfModel }) {
               <Text style={[s.th, s.cDisc]}>Dto.</Text>
               <Text style={[s.th, s.cAmount]}>Importe</Text>
             </View>
-            {chunk.map((r, i) => (
-              <View key={i} style={s.row}>
-                <Text style={s.cDesc}>{r.description}</Text>
-                <Text style={s.cQty}>{r.quantity}</Text>
-                <Text style={s.cPrice}>{r.unitPrice}</Text>
-                <Text style={s.cDisc}>{r.discount}</Text>
-                <Text style={[s.cAmount, { fontWeight: 600 }]}>{r.amount}</Text>
+          }
+          renderRow={(r, i) => (
+            <View key={i} style={s.row}>
+              <Text style={s.cDesc}>{r.description}</Text>
+              <Text style={s.cQty}>{r.quantity}</Text>
+              <Text style={s.cPrice}>{r.unitPrice}</Text>
+              <Text style={s.cDisc}>{r.discount}</Text>
+              <Text style={[s.cAmount, { fontWeight: 600 }]}>{r.amount}</Text>
+            </View>
+          )}
+          closing={
+            <>
+              <View style={s.totalsWrap} wrap={false}>
+                <View style={s.totalRow}>
+                  <Text style={s.muted}>Subtotal</Text>
+                  <Text>{m.money(m.totals.subtotal)}</Text>
+                </View>
+                {m.hasDiscount && (
+                  <View style={s.totalRow}>
+                    <Text style={s.muted}>Descuento</Text>
+                    <Text>- {m.money(m.totals.globalDiscount)}</Text>
+                  </View>
+                )}
+                {m.hasSurcharge && (
+                  <View style={s.totalRow}>
+                    <Text style={s.muted}>Recargo</Text>
+                    <Text>{m.money(m.totals.surcharge)}</Text>
+                  </View>
+                )}
+                {m.totals.taxes.map((t) => (
+                  <View key={t.id} style={s.totalRow}>
+                    <Text style={s.muted}>{t.label}</Text>
+                    <Text>{m.money(t.amount)}</Text>
+                  </View>
+                ))}
+                <View style={s.grand}>
+                  <Text style={s.grandText}>Total {m.currency}</Text>
+                  <Text style={s.grandText}>{m.money(m.totals.total)}</Text>
+                </View>
               </View>
-            ))}
-          </View>
-        ))}
 
-        <View style={s.totalsWrap} wrap={false}>
-          <View style={s.totalRow}>
-            <Text style={s.muted}>Subtotal</Text>
-            <Text>{m.money(m.totals.subtotal)}</Text>
-          </View>
-          {m.hasDiscount && (
-            <View style={s.totalRow}>
-              <Text style={s.muted}>Descuento</Text>
-              <Text>- {m.money(m.totals.globalDiscount)}</Text>
-            </View>
-          )}
-          {m.hasSurcharge && (
-            <View style={s.totalRow}>
-              <Text style={s.muted}>Recargo</Text>
-              <Text>{m.money(m.totals.surcharge)}</Text>
-            </View>
-          )}
-          {m.totals.taxes.map((t) => (
-            <View key={t.id} style={s.totalRow}>
-              <Text style={s.muted}>{t.label}</Text>
-              <Text>{m.money(t.amount)}</Text>
-            </View>
-          ))}
-          <View style={s.grand}>
-            <Text style={s.grandText}>Total {m.currency}</Text>
-            <Text style={s.grandText}>{m.money(m.totals.total)}</Text>
-          </View>
-        </View>
-
-        <View style={s.noteBox}>
-          {termsBlocks(m).map((b) => (
-            <NoteBlock
-              key={b.label}
-              label={b.label}
-              text={b.text}
-              labelStyle={s.noteLabel}
-              textStyle={s.noteText}
-            />
-          ))}
-        </View>
+              <View style={s.noteBox}>
+                {termsBlocks(m).map((b) => (
+                  <NoteBlock
+                    key={b.label}
+                    label={b.label}
+                    text={b.text}
+                    labelStyle={s.noteLabel}
+                    textStyle={s.noteText}
+                  />
+                ))}
+              </View>
+            </>
+          }
+        />
 
         <PageFooter m={m} color={accent} font="Lora" />
         <PreviewMark m={m} />

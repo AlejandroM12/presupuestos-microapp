@@ -9,11 +9,11 @@ import {
   PageFooter,
   PreviewMark,
   readableOn,
-  tableRowChunks,
   termsBlocks,
   tint,
 } from "../common";
 import type { PdfModel } from "../model";
+import { CLOSING_MAX, closingTextLength, ContinuationHeader, PaginatedTable } from "../pagination";
 
 export function ComercialDocument({ m }: { m: PdfModel }) {
   const { quote: q, accent } = m;
@@ -62,7 +62,7 @@ export function ComercialDocument({ m }: { m: PdfModel }) {
     heroValue: { fontSize: 26, fontWeight: 700, color: "#111827", marginTop: 3 },
     heroTerms: { flex: 1, padding: 14, borderLeftWidth: 1.5, borderLeftColor: accent },
     termLabel: {
-      fontSize: 7,
+      fontSize: 7.5,
       letterSpacing: 1.4,
       textTransform: "uppercase",
       color: accent,
@@ -80,17 +80,17 @@ export function ComercialDocument({ m }: { m: PdfModel }) {
       color: accent,
       marginBottom: 4,
     },
-    muted: { color: "#6b7280" },
+    muted: { color: "#4b5563" },
     title: { fontSize: 14, fontWeight: 700, marginTop: 20, lineHeight: 1.25 },
     description: { marginTop: 4, color: "#4b5563" },
     thead: {
       flexDirection: "row",
       backgroundColor: accent,
-      marginTop: 16,
       paddingVertical: 7,
       paddingHorizontal: 8,
     },
     th: {
+      lineHeight: 1.2,
       color: onAccent,
       fontWeight: 700,
       fontSize: 7.5,
@@ -128,19 +128,20 @@ export function ComercialDocument({ m }: { m: PdfModel }) {
       padding: 10,
     },
     noteLabel: {
-      fontSize: 7,
+      fontSize: 7.5,
       letterSpacing: 1.4,
       textTransform: "uppercase",
       color: accent,
       fontWeight: 700,
       marginBottom: 2,
     },
-    noteText: { fontSize: 8.5, lineHeight: 1.45 },
+    noteText: { fontSize: 9, lineHeight: 1.45 },
   });
 
   return (
     <Document title={`Presupuesto ${q.number}`} author={q.issuer.businessName} language="es-AR">
       <Page size="A4" style={s.page}>
+        <ContinuationHeader m={m} color="#111827" muted="#4b5563" accent={accent} />
         <View style={s.banner}>
           <View style={{ flexDirection: "row", alignItems: "center", maxWidth: 340 }}>
             {q.issuer.logo ? (
@@ -213,8 +214,11 @@ export function ComercialDocument({ m }: { m: PdfModel }) {
         <Text style={s.title}>{q.title}</Text>
         {q.description ? <Text style={s.description}>{q.description}</Text> : null}
 
-        {tableRowChunks(m.rows, { firstPage: 3, otherPages: 5 }).map((chunk, chunkIndex) => (
-          <View key={chunkIndex} wrap={false}>
+        <PaginatedTable
+          gap={16}
+          rows={m.rows}
+          keepClosing={closingTextLength(m) <= CLOSING_MAX}
+          head={
             <View style={s.thead}>
               <Text style={[s.th, s.cDesc]}>Descripción</Text>
               <Text style={[s.th, s.cQty]}>Cantidad</Text>
@@ -222,68 +226,71 @@ export function ComercialDocument({ m }: { m: PdfModel }) {
               <Text style={[s.th, s.cDisc]}>Dto.</Text>
               <Text style={[s.th, s.cAmount]}>Importe</Text>
             </View>
-            {chunk.map((r, i) => (
-              <View key={i} style={s.row}>
-                <Text style={s.cDesc}>{r.description}</Text>
-                <Text style={s.cQty}>{r.quantity}</Text>
-                <Text style={s.cPrice}>{r.unitPrice}</Text>
-                <Text style={s.cDisc}>{r.discount}</Text>
-                <Text style={[s.cAmount, { fontWeight: 600 }]}>{r.amount}</Text>
+          }
+          renderRow={(r, i) => (
+            <View key={i} style={s.row}>
+              <Text style={s.cDesc}>{r.description}</Text>
+              <Text style={s.cQty}>{r.quantity}</Text>
+              <Text style={s.cPrice}>{r.unitPrice}</Text>
+              <Text style={s.cDisc}>{r.discount}</Text>
+              <Text style={[s.cAmount, { fontWeight: 600 }]}>{r.amount}</Text>
+            </View>
+          )}
+          closing={
+            <>
+              <View style={s.totals} wrap={false}>
+                <View style={s.totalRow}>
+                  <Text style={s.muted}>Subtotal</Text>
+                  <Text>{m.money(m.totals.subtotal)}</Text>
+                </View>
+                {m.hasDiscount && (
+                  <View style={s.totalRow}>
+                    <Text style={s.muted}>Descuento</Text>
+                    <Text>- {m.money(m.totals.globalDiscount)}</Text>
+                  </View>
+                )}
+                {m.hasSurcharge && (
+                  <View style={s.totalRow}>
+                    <Text style={s.muted}>Recargo</Text>
+                    <Text>{m.money(m.totals.surcharge)}</Text>
+                  </View>
+                )}
+                {m.totals.taxes.map((t) => (
+                  <View key={t.id} style={s.totalRow}>
+                    <Text style={s.muted}>{t.label}</Text>
+                    <Text>{m.money(t.amount)}</Text>
+                  </View>
+                ))}
+                <View style={s.grand}>
+                  <Text style={s.grandText}>Total {m.currency}</Text>
+                  <Text style={s.grandText}>{m.money(m.totals.total)}</Text>
+                </View>
+                <View style={s.cta}>
+                  <Text style={{ fontWeight: 600 }}>¿Te interesa esta propuesta?</Text>
+                  <Text style={s.muted}>
+                    Para aceptarla o hacer consultas, contactá a{" "}
+                    {q.issuer.professionalName || q.issuer.businessName}
+                    {contactLine(m) ? `: ${contactLine(m)}` : "."}
+                  </Text>
+                </View>
               </View>
-            ))}
-          </View>
-        ))}
 
-        <View style={s.totals} wrap={false}>
-          <View style={s.totalRow}>
-            <Text style={s.muted}>Subtotal</Text>
-            <Text>{m.money(m.totals.subtotal)}</Text>
-          </View>
-          {m.hasDiscount && (
-            <View style={s.totalRow}>
-              <Text style={s.muted}>Descuento</Text>
-              <Text>- {m.money(m.totals.globalDiscount)}</Text>
-            </View>
-          )}
-          {m.hasSurcharge && (
-            <View style={s.totalRow}>
-              <Text style={s.muted}>Recargo</Text>
-              <Text>{m.money(m.totals.surcharge)}</Text>
-            </View>
-          )}
-          {m.totals.taxes.map((t) => (
-            <View key={t.id} style={s.totalRow}>
-              <Text style={s.muted}>{t.label}</Text>
-              <Text>{m.money(t.amount)}</Text>
-            </View>
-          ))}
-          <View style={s.grand}>
-            <Text style={s.grandText}>Total {m.currency}</Text>
-            <Text style={s.grandText}>{m.money(m.totals.total)}</Text>
-          </View>
-          <View style={s.cta}>
-            <Text style={{ fontWeight: 600 }}>¿Te interesa esta propuesta?</Text>
-            <Text style={s.muted}>
-              Para aceptarla o hacer consultas, contactá a{" "}
-              {q.issuer.professionalName || q.issuer.businessName}
-              {contactLine(m) ? `: ${contactLine(m)}` : "."}
-            </Text>
-          </View>
-        </View>
-
-        <View style={{ marginTop: 14 }}>
-          {termsBlocks(m)
-            .filter((b) => b.label !== "Forma de pago" && b.label !== "Plazo estimado")
-            .map((b) => (
-              <NoteBlock
-                key={b.label}
-                label={b.label}
-                text={b.text}
-                labelStyle={s.noteLabel}
-                textStyle={s.noteText}
-              />
-            ))}
-        </View>
+              <View style={{ marginTop: 14 }}>
+                {termsBlocks(m)
+                  .filter((b) => b.label !== "Forma de pago" && b.label !== "Plazo estimado")
+                  .map((b) => (
+                    <NoteBlock
+                      key={b.label}
+                      label={b.label}
+                      text={b.text}
+                      labelStyle={s.noteLabel}
+                      textStyle={s.noteText}
+                    />
+                  ))}
+              </View>
+            </>
+          }
+        />
 
         <PageFooter m={m} />
         <PreviewMark m={m} />

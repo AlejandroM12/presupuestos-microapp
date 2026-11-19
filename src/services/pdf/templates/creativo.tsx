@@ -12,6 +12,7 @@ import {
   tint,
 } from "../common";
 import type { PdfModel } from "../model";
+import { CLOSING_MAX, closingTextLength, ContinuationHeader } from "../pagination";
 
 const DARK = "#1c1917";
 
@@ -97,7 +98,7 @@ export function CreativoDocument({ m }: { m: PdfModel }) {
     sumWrap: { flexDirection: "row", marginTop: 18, alignItems: "flex-start" },
     totalBlock: {
       backgroundColor: accent,
-      paddingVertical: 14,
+      paddingVertical: 16,
       paddingHorizontal: 16,
       width: 230,
       borderTopLeftRadius: 18,
@@ -114,6 +115,7 @@ export function CreativoDocument({ m }: { m: PdfModel }) {
       fontFamily: "Bricolage",
       fontWeight: 700,
       fontSize: 24,
+      lineHeight: 1.15,
       color: onAccent,
       marginTop: 4,
     },
@@ -133,13 +135,14 @@ export function CreativoDocument({ m }: { m: PdfModel }) {
       color: accent,
       marginBottom: 2,
     },
-    noteText: { fontSize: 8.5, lineHeight: 1.45 },
+    noteText: { fontSize: 9, lineHeight: 1.45 },
   });
 
   return (
     <Document title={`Presupuesto ${q.number}`} author={q.issuer.businessName} language="es-AR">
       <Page size="A4" style={s.page}>
         <View fixed style={s.topStrip} />
+        <ContinuationHeader m={m} color="#1c1917" muted="#57534e" accent={accent} />
         <Svg
           style={{ position: "absolute", top: -60, right: -50, width: 230, height: 230 }}
           viewBox="0 0 230 230"
@@ -202,62 +205,116 @@ export function CreativoDocument({ m }: { m: PdfModel }) {
         {q.description ? <Text style={s.description}>{q.description}</Text> : null}
 
         <View style={{ marginTop: 6 }}>
-          {m.rows.map((r, i) => (
-            <View key={i} style={s.card} wrap={false}>
-              <View style={s.cDesc}>
-                <Text style={{ fontWeight: 600 }}>{r.description}</Text>
+          {m.rows.map((r, i) => {
+            const isLast = i === m.rows.length - 1;
+            const keep = isLast && closingTextLength(m) <= CLOSING_MAX;
+            const cardEl = (
+              <View style={s.card}>
+                <View style={s.cDesc}>
+                  <Text style={{ fontWeight: 600 }}>{r.description}</Text>
+                </View>
+                <Text style={s.cMeta}>
+                  {r.quantity} × {r.unitPrice}
+                  {r.discount !== "—" ? `  (-${r.discount})` : ""}
+                </Text>
+                <Text style={s.cAmount}>{r.amount}</Text>
               </View>
-              <Text style={s.cMeta}>
-                {r.quantity} × {r.unitPrice}
-                {r.discount !== "—" ? `  (-${r.discount})` : ""}
-              </Text>
-              <Text style={s.cAmount}>{r.amount}</Text>
+            );
+            return keep ? (
+              <View key={i} wrap={false}>
+                {cardEl}
+                <View style={s.sumWrap}>
+                  <View style={s.totalBlock}>
+                    <Text style={s.totalLabel}>Total {m.currency}</Text>
+                    <Text style={s.totalValue}>{m.money(m.totals.total)}</Text>
+                  </View>
+                  <View style={s.sumRows}>
+                    <View style={s.sumRow}>
+                      <Text style={s.muted}>Subtotal</Text>
+                      <Text>{m.money(m.totals.subtotal)}</Text>
+                    </View>
+                    {m.hasDiscount && (
+                      <View style={s.sumRow}>
+                        <Text style={s.muted}>Descuento</Text>
+                        <Text>- {m.money(m.totals.globalDiscount)}</Text>
+                      </View>
+                    )}
+                    {m.hasSurcharge && (
+                      <View style={s.sumRow}>
+                        <Text style={s.muted}>Recargo</Text>
+                        <Text>{m.money(m.totals.surcharge)}</Text>
+                      </View>
+                    )}
+                    {m.totals.taxes.map((t) => (
+                      <View key={t.id} style={s.sumRow}>
+                        <Text style={s.muted}>{t.label}</Text>
+                        <Text>{m.money(t.amount)}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+                <View style={{ marginTop: 14 }}>
+                  {termsBlocks(m).map((b) => (
+                    <NoteBlock
+                      key={b.label}
+                      label={b.label}
+                      text={b.text}
+                      labelStyle={s.noteLabel}
+                      textStyle={s.noteText}
+                    />
+                  ))}
+                </View>
+              </View>
+            ) : (
+              <View key={i}>{cardEl}</View>
+            );
+          })}
+        </View>
+        {closingTextLength(m) > CLOSING_MAX && (
+          <>
+            <View style={s.sumWrap} wrap={false}>
+              <View style={s.totalBlock}>
+                <Text style={s.totalLabel}>Total {m.currency}</Text>
+                <Text style={s.totalValue}>{m.money(m.totals.total)}</Text>
+              </View>
+              <View style={s.sumRows}>
+                <View style={s.sumRow}>
+                  <Text style={s.muted}>Subtotal</Text>
+                  <Text>{m.money(m.totals.subtotal)}</Text>
+                </View>
+                {m.hasDiscount && (
+                  <View style={s.sumRow}>
+                    <Text style={s.muted}>Descuento</Text>
+                    <Text>- {m.money(m.totals.globalDiscount)}</Text>
+                  </View>
+                )}
+                {m.hasSurcharge && (
+                  <View style={s.sumRow}>
+                    <Text style={s.muted}>Recargo</Text>
+                    <Text>{m.money(m.totals.surcharge)}</Text>
+                  </View>
+                )}
+                {m.totals.taxes.map((t) => (
+                  <View key={t.id} style={s.sumRow}>
+                    <Text style={s.muted}>{t.label}</Text>
+                    <Text>{m.money(t.amount)}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
-          ))}
-        </View>
-
-        <View style={s.sumWrap} wrap={false}>
-          <View style={s.totalBlock}>
-            <Text style={s.totalLabel}>Total {m.currency}</Text>
-            <Text style={s.totalValue}>{m.money(m.totals.total)}</Text>
-          </View>
-          <View style={s.sumRows}>
-            <View style={s.sumRow}>
-              <Text style={s.muted}>Subtotal</Text>
-              <Text>{m.money(m.totals.subtotal)}</Text>
+            <View style={{ marginTop: 14 }}>
+              {termsBlocks(m).map((b) => (
+                <NoteBlock
+                  key={b.label}
+                  label={b.label}
+                  text={b.text}
+                  labelStyle={s.noteLabel}
+                  textStyle={s.noteText}
+                />
+              ))}
             </View>
-            {m.hasDiscount && (
-              <View style={s.sumRow}>
-                <Text style={s.muted}>Descuento</Text>
-                <Text>- {m.money(m.totals.globalDiscount)}</Text>
-              </View>
-            )}
-            {m.hasSurcharge && (
-              <View style={s.sumRow}>
-                <Text style={s.muted}>Recargo</Text>
-                <Text>{m.money(m.totals.surcharge)}</Text>
-              </View>
-            )}
-            {m.totals.taxes.map((t) => (
-              <View key={t.id} style={s.sumRow}>
-                <Text style={s.muted}>{t.label}</Text>
-                <Text>{m.money(t.amount)}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        <View style={{ marginTop: 14 }}>
-          {termsBlocks(m).map((b) => (
-            <NoteBlock
-              key={b.label}
-              label={b.label}
-              text={b.text}
-              labelStyle={s.noteLabel}
-              textStyle={s.noteText}
-            />
-          ))}
-        </View>
+          </>
+        )}
 
         <PageFooter m={m} color="#78716c" />
         <PreviewMark m={m} />

@@ -6,11 +6,11 @@ import {
   PageFooter,
   PreviewMark,
   readableOn,
-  tableRowChunks,
   termsBlocks,
   tint,
 } from "../common";
 import type { PdfModel } from "../model";
+import { CLOSING_MAX, closingTextLength, ContinuationHeader, PaginatedTable } from "../pagination";
 
 const SIDEBAR = 170;
 
@@ -47,7 +47,7 @@ export function ModernoDocument({ m }: { m: PdfModel }) {
       color: onAccent,
     },
     sbLabel: {
-      fontSize: 7,
+      fontSize: 7.5,
       letterSpacing: 1.6,
       textTransform: "uppercase",
       color: onAccent,
@@ -71,18 +71,18 @@ export function ModernoDocument({ m }: { m: PdfModel }) {
       color: accent,
       fontWeight: 700,
     },
-    docNumber: { fontSize: 30, fontWeight: 700, color: "#111827", marginTop: 2 },
+    docNumber: { fontSize: 30, fontWeight: 700, color: "#111827", marginTop: 2, lineHeight: 1.15 },
     title: { fontSize: 13, fontWeight: 600, marginTop: 14, lineHeight: 1.3 },
-    description: { color: "#6b7280", marginTop: 4 },
+    description: { color: "#4b5563", marginTop: 4 },
     thead: {
       flexDirection: "row",
-      marginTop: 20,
       paddingVertical: 7,
       paddingHorizontal: 8,
       backgroundColor: accent,
       borderRadius: 4,
     },
     th: {
+      lineHeight: 1.2,
       fontSize: 7.5,
       fontWeight: 600,
       color: onAccent,
@@ -101,7 +101,7 @@ export function ModernoDocument({ m }: { m: PdfModel }) {
       paddingVertical: 2.5,
       paddingHorizontal: 8,
     },
-    muted: { color: "#6b7280" },
+    muted: { color: "#4b5563" },
     pill: {
       flexDirection: "row",
       justifyContent: "space-between",
@@ -121,12 +121,13 @@ export function ModernoDocument({ m }: { m: PdfModel }) {
       fontWeight: 700,
       marginBottom: 2,
     },
-    noteText: { fontSize: 8.5, lineHeight: 1.45 },
+    noteText: { fontSize: 9, lineHeight: 1.45 },
   });
 
   return (
     <Document title={`Presupuesto ${q.number}`} author={q.issuer.businessName} language="es-AR">
       <Page size="A4" style={s.page}>
+        <ContinuationHeader m={m} color="#111827" muted="#4b5563" accent={accent} />
         <View fixed style={s.sidebarBar} />
         <View style={s.sidebarContent}>
           {q.issuer.logo ? (
@@ -175,78 +176,78 @@ export function ModernoDocument({ m }: { m: PdfModel }) {
         <Text style={s.title}>{q.title}</Text>
         {q.description ? <Text style={s.description}>{q.description}</Text> : null}
 
-        {tableRowChunks(
-          m.rows.map((r, i) => ({ r, i })),
-          {
-            firstPage: 3,
-            otherPages: 5,
-          },
-        ).map((chunk, chunkIndex) => (
-          <View key={chunkIndex} wrap={false}>
+        <PaginatedTable
+          gap={20}
+          rows={m.rows.map((r, i) => ({ r, i }))}
+          keepClosing={closingTextLength(m) <= CLOSING_MAX}
+          head={
             <View style={s.thead}>
               <Text style={[s.th, s.cDesc]}>Descripción</Text>
               <Text style={[s.th, s.cQty]}>Cant.</Text>
               <Text style={[s.th, s.cPrice]}>Precio</Text>
               <Text style={[s.th, s.cAmount]}>Importe</Text>
             </View>
-            {chunk.map(({ r, i }) => (
-              <View key={i} style={[s.row, { backgroundColor: i % 2 === 0 ? soft : "#ffffff" }]}>
-                <View style={s.cDesc}>
-                  <Text>{r.description}</Text>
-                  {r.discount !== "—" ? (
-                    <Text style={{ fontSize: 7.5, color: accent }}>Descuento {r.discount}</Text>
-                  ) : null}
-                </View>
-                <Text style={s.cQty}>{r.quantity}</Text>
-                <Text style={s.cPrice}>{r.unitPrice}</Text>
-                <Text style={[s.cAmount, { fontWeight: 600 }]}>{r.amount}</Text>
+          }
+          renderRow={({ r, i }) => (
+            <View key={i} style={[s.row, { backgroundColor: i % 2 === 0 ? soft : "#ffffff" }]}>
+              <View style={s.cDesc}>
+                <Text>{r.description}</Text>
+                {r.discount !== "—" ? (
+                  <Text style={{ fontSize: 7.5, color: accent }}>Descuento {r.discount}</Text>
+                ) : null}
               </View>
-            ))}
-          </View>
-        ))}
-
-        <View style={s.totals} wrap={false}>
-          <View style={s.totalRow}>
-            <Text style={s.muted}>Subtotal</Text>
-            <Text>{m.money(m.totals.subtotal)}</Text>
-          </View>
-          {m.hasDiscount && (
-            <View style={s.totalRow}>
-              <Text style={s.muted}>Descuento</Text>
-              <Text>- {m.money(m.totals.globalDiscount)}</Text>
+              <Text style={s.cQty}>{r.quantity}</Text>
+              <Text style={s.cPrice}>{r.unitPrice}</Text>
+              <Text style={[s.cAmount, { fontWeight: 600 }]}>{r.amount}</Text>
             </View>
           )}
-          {m.hasSurcharge && (
-            <View style={s.totalRow}>
-              <Text style={s.muted}>Recargo</Text>
-              <Text>{m.money(m.totals.surcharge)}</Text>
-            </View>
-          )}
-          {m.totals.taxes.map((t) => (
-            <View key={t.id} style={s.totalRow}>
-              <Text style={s.muted}>{t.label}</Text>
-              <Text>{m.money(t.amount)}</Text>
-            </View>
-          ))}
-          <View style={s.pill}>
-            <Text style={s.pillText}>Total {m.currency}</Text>
-            <Text style={s.pillText}>{m.money(m.totals.total)}</Text>
-          </View>
-        </View>
+          closing={
+            <>
+              <View style={s.totals} wrap={false}>
+                <View style={s.totalRow}>
+                  <Text style={s.muted}>Subtotal</Text>
+                  <Text>{m.money(m.totals.subtotal)}</Text>
+                </View>
+                {m.hasDiscount && (
+                  <View style={s.totalRow}>
+                    <Text style={s.muted}>Descuento</Text>
+                    <Text>- {m.money(m.totals.globalDiscount)}</Text>
+                  </View>
+                )}
+                {m.hasSurcharge && (
+                  <View style={s.totalRow}>
+                    <Text style={s.muted}>Recargo</Text>
+                    <Text>{m.money(m.totals.surcharge)}</Text>
+                  </View>
+                )}
+                {m.totals.taxes.map((t) => (
+                  <View key={t.id} style={s.totalRow}>
+                    <Text style={s.muted}>{t.label}</Text>
+                    <Text>{m.money(t.amount)}</Text>
+                  </View>
+                ))}
+                <View style={s.pill}>
+                  <Text style={s.pillText}>Total {m.currency}</Text>
+                  <Text style={s.pillText}>{m.money(m.totals.total)}</Text>
+                </View>
+              </View>
 
-        <View style={{ marginTop: 16 }}>
-          {termsBlocks(m).map((b) => (
-            <NoteBlock
-              key={b.label}
-              label={b.label}
-              text={b.text}
-              labelStyle={s.noteLabel}
-              textStyle={s.noteText}
-            />
-          ))}
-        </View>
+              <View style={{ marginTop: 16 }}>
+                {termsBlocks(m).map((b) => (
+                  <NoteBlock
+                    key={b.label}
+                    label={b.label}
+                    text={b.text}
+                    labelStyle={s.noteLabel}
+                    textStyle={s.noteText}
+                  />
+                ))}
+              </View>
+            </>
+          }
+        />
 
-        <PageFooter m={m} left={SIDEBAR + 30} />
+        <PageFooter m={m} left={SIDEBAR + 30} maxWidth={230} />
         <PreviewMark m={m} />
       </Page>
     </Document>

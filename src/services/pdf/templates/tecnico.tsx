@@ -8,13 +8,13 @@ import {
   PageFooter,
   PreviewMark,
   readableOn,
-  tableRowChunks,
   termsBlocks,
   tint,
 } from "../common";
 import type { PdfModel } from "../model";
+import { CLOSING_MAX, closingTextLength, ContinuationHeader, PaginatedTable } from "../pagination";
 
-const GRID = "#9ca3af";
+const GRID = "#94a3b8";
 
 export function TecnicoDocument({ m }: { m: PdfModel }) {
   const { quote: q, accent } = m;
@@ -44,7 +44,7 @@ export function TecnicoDocument({ m }: { m: PdfModel }) {
     cell: { flex: 1, padding: 7, borderRightWidth: 1, borderRightColor: GRID },
     cellLast: { flex: 1, padding: 7 },
     cellLabel: {
-      fontSize: 6.5,
+      fontSize: 7.5,
       color: accent,
       fontWeight: 700,
       letterSpacing: 1,
@@ -65,10 +65,10 @@ export function TecnicoDocument({ m }: { m: PdfModel }) {
       backgroundColor: tint(accent, 0.14),
       borderWidth: 1,
       borderColor: GRID,
-      marginTop: 14,
     },
     th: {
-      fontSize: 6.5,
+      lineHeight: 1.2,
+      fontSize: 7.5,
       fontWeight: 700,
       letterSpacing: 0.6,
       textTransform: "uppercase",
@@ -113,7 +113,7 @@ export function TecnicoDocument({ m }: { m: PdfModel }) {
     },
     grandText: { fontWeight: 700, fontSize: 10, color: onAccent },
     noteLabel: {
-      fontSize: 6.5,
+      fontSize: 7.5,
       fontWeight: 700,
       letterSpacing: 1,
       textTransform: "uppercase",
@@ -126,6 +126,7 @@ export function TecnicoDocument({ m }: { m: PdfModel }) {
   return (
     <Document title={`Presupuesto ${q.number}`} author={q.issuer.businessName} language="es-AR">
       <Page size="A4" style={s.page}>
+        <ContinuationHeader m={m} font="JetBrains" color="#111827" muted="#4b5563" />
         <View style={s.titleRow}>
           <View style={s.titleCell}>
             {q.issuer.logo ? <Logo src={q.issuer.logo} style={{ marginBottom: 6 }} /> : null}
@@ -179,11 +180,14 @@ export function TecnicoDocument({ m }: { m: PdfModel }) {
           ) : null}
         </View>
 
-        {tableRowChunks(m.rows.map((r, i) => ({ r, i }))).map((chunk, chunkIndex) => (
-          <View key={chunkIndex} wrap={false}>
+        <PaginatedTable
+          gap={14}
+          rows={m.rows.map((r, i) => ({ r, i }))}
+          keepClosing={closingTextLength(m) <= CLOSING_MAX}
+          head={
             <View style={s.thead}>
               <Text style={[s.th, s.cIdx]}>It.</Text>
-              <Text style={[s.th, s.cDesc, { fontFamily: "JetBrains", fontSize: 6.5 }]}>
+              <Text style={[s.th, s.cDesc, { fontFamily: "JetBrains", fontSize: 7.5 }]}>
                 Descripción
               </Text>
               <Text style={[s.th, s.cQty]}>Cantidad</Text>
@@ -191,63 +195,66 @@ export function TecnicoDocument({ m }: { m: PdfModel }) {
               <Text style={[s.th, s.cDisc]}>Dto</Text>
               <Text style={[s.th, s.cAmount]}>Importe</Text>
             </View>
-            {chunk.map(({ r, i }) => (
-              <View key={i} style={s.row}>
-                <Text style={[s.td, s.cIdx]}>{String(i + 1).padStart(2, "0")}</Text>
-                <Text style={[s.td, s.cDesc]}>{r.description}</Text>
-                <Text style={[s.td, s.cQty]}>{r.quantity}</Text>
-                <Text style={[s.td, s.cPrice]}>{r.unitPrice}</Text>
-                <Text style={[s.td, s.cDisc]}>{r.discount}</Text>
-                <Text style={[s.td, s.cAmount, { fontWeight: 700 }]}>{r.amount}</Text>
+          }
+          renderRow={({ r, i }) => (
+            <View key={i} style={s.row}>
+              <Text style={[s.td, s.cIdx]}>{String(i + 1).padStart(2, "0")}</Text>
+              <Text style={[s.td, s.cDesc]}>{r.description}</Text>
+              <Text style={[s.td, s.cQty]}>{r.quantity}</Text>
+              <Text style={[s.td, s.cPrice]}>{r.unitPrice}</Text>
+              <Text style={[s.td, s.cDisc]}>{r.discount}</Text>
+              <Text style={[s.td, s.cAmount, { fontWeight: 700 }]}>{r.amount}</Text>
+            </View>
+          )}
+          closing={
+            <>
+              <View style={s.totals} wrap={false}>
+                <View style={s.totalRow}>
+                  <Text>SUBTOTAL</Text>
+                  <Text>{m.money(m.totals.subtotal)}</Text>
+                </View>
+                {m.hasDiscount && (
+                  <View style={s.totalRow}>
+                    <Text>DESCUENTO</Text>
+                    <Text>- {m.money(m.totals.globalDiscount)}</Text>
+                  </View>
+                )}
+                {m.hasSurcharge && (
+                  <View style={s.totalRow}>
+                    <Text>RECARGO</Text>
+                    <Text>{m.money(m.totals.surcharge)}</Text>
+                  </View>
+                )}
+                {m.totals.taxes.map((t) => (
+                  <View key={t.id} style={s.totalRow}>
+                    <Text>{t.label.toUpperCase()}</Text>
+                    <Text>{m.money(t.amount)}</Text>
+                  </View>
+                ))}
+                <View style={s.grand}>
+                  <Text style={s.grandText}>TOTAL {m.currency}</Text>
+                  <Text style={s.grandText}>{m.money(m.totals.total)}</Text>
+                </View>
               </View>
-            ))}
-          </View>
-        ))}
 
-        <View style={s.totals} wrap={false}>
-          <View style={s.totalRow}>
-            <Text>SUBTOTAL</Text>
-            <Text>{m.money(m.totals.subtotal)}</Text>
-          </View>
-          {m.hasDiscount && (
-            <View style={s.totalRow}>
-              <Text>DESCUENTO</Text>
-              <Text>- {m.money(m.totals.globalDiscount)}</Text>
-            </View>
-          )}
-          {m.hasSurcharge && (
-            <View style={s.totalRow}>
-              <Text>RECARGO</Text>
-              <Text>{m.money(m.totals.surcharge)}</Text>
-            </View>
-          )}
-          {m.totals.taxes.map((t) => (
-            <View key={t.id} style={s.totalRow}>
-              <Text>{t.label.toUpperCase()}</Text>
-              <Text>{m.money(t.amount)}</Text>
-            </View>
-          ))}
-          <View style={s.grand}>
-            <Text style={s.grandText}>TOTAL {m.currency}</Text>
-            <Text style={s.grandText}>{m.money(m.totals.total)}</Text>
-          </View>
-        </View>
+              <View style={{ marginTop: 14 }}>
+                {termsBlocks(m)
+                  .filter((b) => b.label !== "Plazo estimado")
+                  .map((b) => (
+                    <NoteBlock
+                      key={b.label}
+                      label={b.label}
+                      text={b.text}
+                      labelStyle={s.noteLabel}
+                      textStyle={s.noteText}
+                    />
+                  ))}
+              </View>
+            </>
+          }
+        />
 
-        <View style={{ marginTop: 14 }}>
-          {termsBlocks(m)
-            .filter((b) => b.label !== "Plazo estimado")
-            .map((b) => (
-              <NoteBlock
-                key={b.label}
-                label={b.label}
-                text={b.text}
-                labelStyle={s.noteLabel}
-                textStyle={s.noteText}
-              />
-            ))}
-        </View>
-
-        <PageFooter m={m} font="JetBrains" color="#6b7280" />
+        <PageFooter m={m} font="JetBrains" color="#4b5563" />
         <PreviewMark m={m} />
       </Page>
     </Document>

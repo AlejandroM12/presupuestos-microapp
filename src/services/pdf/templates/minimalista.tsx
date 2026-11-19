@@ -7,13 +7,13 @@ import {
   NoteBlock,
   PageFooter,
   PAGE_PADDING,
-  tableRowChunks,
   termsBlocks,
 } from "../common";
 import type { PdfModel } from "../model";
+import { CLOSING_MAX, closingTextLength, ContinuationHeader, PaginatedTable } from "../pagination";
 
 const INK = "#111827";
-const MUTED = "#6b7280";
+const MUTED = "#4b5563";
 const LINE = "#e5e7eb";
 
 const s = StyleSheet.create({
@@ -34,23 +34,29 @@ const s = StyleSheet.create({
   rule: { height: 1, backgroundColor: INK, marginTop: 18, marginBottom: 14 },
   meta: { flexDirection: "row", justifyContent: "space-between" },
   label: {
-    fontSize: 7,
+    fontSize: 7.5,
     letterSpacing: 1.5,
     textTransform: "uppercase",
     color: MUTED,
     marginBottom: 3,
   },
   strong: { fontWeight: 600 },
-  title: { fontSize: 13, fontWeight: 600, marginTop: 20 },
+  title: { fontSize: 13, fontWeight: 600, lineHeight: 1.25, marginTop: 20 },
   description: { marginTop: 4, color: MUTED },
   tableHead: {
     flexDirection: "row",
     borderBottomWidth: 1,
     borderBottomColor: INK,
     paddingBottom: 5,
-    marginTop: 18,
+    marginTop: 0,
   },
-  th: { fontSize: 7, letterSpacing: 1.2, textTransform: "uppercase", color: MUTED },
+  th: {
+    lineHeight: 1.2,
+    fontSize: 7.5,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    color: MUTED,
+  },
   row: { flexDirection: "row", paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: LINE },
   cDesc: { flexGrow: 1, flexBasis: 0, paddingRight: 8 },
   cQty: { width: 72, textAlign: "right" },
@@ -69,13 +75,13 @@ const s = StyleSheet.create({
   },
   grandText: { fontSize: 13, fontWeight: 700 },
   noteLabel: {
-    fontSize: 7,
+    fontSize: 7.5,
     letterSpacing: 1.5,
     textTransform: "uppercase",
     color: MUTED,
     marginBottom: 2,
   },
-  noteText: { fontSize: 8.5 },
+  noteText: { fontSize: 9 },
 });
 
 export function MinimalistaDocument({ m }: { m: PdfModel }) {
@@ -83,6 +89,7 @@ export function MinimalistaDocument({ m }: { m: PdfModel }) {
   return (
     <Document title={`Presupuesto ${q.number}`} author={q.issuer.businessName} language="es-AR">
       <Page size="A4" style={s.page}>
+        <ContinuationHeader m={m} color={INK} muted={MUTED} />
         <View style={s.header}>
           <View style={{ maxWidth: 300 }}>
             <Logo src={q.issuer.logo} style={{ marginBottom: 8 }} />
@@ -123,8 +130,11 @@ export function MinimalistaDocument({ m }: { m: PdfModel }) {
         <Text style={s.title}>{q.title}</Text>
         {q.description ? <Text style={s.description}>{q.description}</Text> : null}
 
-        {tableRowChunks(m.rows).map((chunk, chunkIndex) => (
-          <View key={chunkIndex} wrap={false}>
+        <PaginatedTable
+          gap={18}
+          rows={m.rows}
+          keepClosing={closingTextLength(m) <= CLOSING_MAX}
+          head={
             <View style={s.tableHead}>
               <Text style={[s.th, s.cDesc]}>Descripción</Text>
               <Text style={[s.th, s.cQty]}>Cantidad</Text>
@@ -132,58 +142,61 @@ export function MinimalistaDocument({ m }: { m: PdfModel }) {
               <Text style={[s.th, s.cDisc]}>Dto.</Text>
               <Text style={[s.th, s.cAmount]}>Importe</Text>
             </View>
-            {chunk.map((r, i) => (
-              <View key={i} style={s.row}>
-                <Text style={s.cDesc}>{r.description}</Text>
-                <Text style={s.cQty}>{r.quantity}</Text>
-                <Text style={s.cPrice}>{r.unitPrice}</Text>
-                <Text style={s.cDisc}>{r.discount}</Text>
-                <Text style={[s.cAmount, s.strong]}>{r.amount}</Text>
+          }
+          renderRow={(r) => (
+            <View style={s.row}>
+              <Text style={s.cDesc}>{r.description}</Text>
+              <Text style={s.cQty}>{r.quantity}</Text>
+              <Text style={s.cPrice}>{r.unitPrice}</Text>
+              <Text style={s.cDisc}>{r.discount}</Text>
+              <Text style={[s.cAmount, s.strong]}>{r.amount}</Text>
+            </View>
+          )}
+          closing={
+            <>
+              <View style={s.totals}>
+                <View style={s.totalRow}>
+                  <Text style={s.muted}>Subtotal</Text>
+                  <Text>{m.money(m.totals.subtotal)}</Text>
+                </View>
+                {m.hasDiscount && (
+                  <View style={s.totalRow}>
+                    <Text style={s.muted}>Descuento</Text>
+                    <Text>- {m.money(m.totals.globalDiscount)}</Text>
+                  </View>
+                )}
+                {m.hasSurcharge && (
+                  <View style={s.totalRow}>
+                    <Text style={s.muted}>Recargo</Text>
+                    <Text>{m.money(m.totals.surcharge)}</Text>
+                  </View>
+                )}
+                {m.totals.taxes.map((t) => (
+                  <View key={t.id} style={s.totalRow}>
+                    <Text style={s.muted}>{t.label}</Text>
+                    <Text>{m.money(t.amount)}</Text>
+                  </View>
+                ))}
+                <View style={s.grand}>
+                  <Text style={s.grandText}>Total {m.currency}</Text>
+                  <Text style={s.grandText}>{m.money(m.totals.total)}</Text>
+                </View>
               </View>
-            ))}
-          </View>
-        ))}
 
-        <View style={s.totals} wrap={false}>
-          <View style={s.totalRow}>
-            <Text style={s.muted}>Subtotal</Text>
-            <Text>{m.money(m.totals.subtotal)}</Text>
-          </View>
-          {m.hasDiscount && (
-            <View style={s.totalRow}>
-              <Text style={s.muted}>Descuento</Text>
-              <Text>- {m.money(m.totals.globalDiscount)}</Text>
-            </View>
-          )}
-          {m.hasSurcharge && (
-            <View style={s.totalRow}>
-              <Text style={s.muted}>Recargo</Text>
-              <Text>{m.money(m.totals.surcharge)}</Text>
-            </View>
-          )}
-          {m.totals.taxes.map((t) => (
-            <View key={t.id} style={s.totalRow}>
-              <Text style={s.muted}>{t.label}</Text>
-              <Text>{m.money(t.amount)}</Text>
-            </View>
-          ))}
-          <View style={s.grand}>
-            <Text style={s.grandText}>Total {m.currency}</Text>
-            <Text style={s.grandText}>{m.money(m.totals.total)}</Text>
-          </View>
-        </View>
-
-        <View style={{ marginTop: 14 }}>
-          {termsBlocks(m).map((b) => (
-            <NoteBlock
-              key={b.label}
-              label={b.label}
-              text={b.text}
-              labelStyle={s.noteLabel}
-              textStyle={s.noteText}
-            />
-          ))}
-        </View>
+              <View style={{ marginTop: 14 }}>
+                {termsBlocks(m).map((b) => (
+                  <NoteBlock
+                    key={b.label}
+                    label={b.label}
+                    text={b.text}
+                    labelStyle={s.noteLabel}
+                    textStyle={s.noteText}
+                  />
+                ))}
+              </View>
+            </>
+          }
+        />
 
         <PageFooter m={m} />
         <PreviewMark m={m} />
