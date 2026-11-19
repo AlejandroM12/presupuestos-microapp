@@ -13,6 +13,8 @@ import type { PdfModel } from "../model";
 import { CLOSING_MAX, closingTextLength, ContinuationHeader, PaginatedTable } from "../pagination";
 
 const SIDEBAR = 170;
+/** Margen lateral de la página: el contenido usa todo el ancho en todas las páginas. */
+const SIDE_MARGIN = 36;
 
 export function ModernoDocument({ m }: { m: PdfModel }) {
   const { quote: q, accent } = m;
@@ -20,32 +22,24 @@ export function ModernoDocument({ m }: { m: PdfModel }) {
   const soft = tint(accent, 0.08);
   const s = StyleSheet.create({
     page: {
-      paddingTop: 40,
-      paddingLeft: SIDEBAR + 30,
-      paddingRight: 36,
+      paddingTop: 0,
+      paddingLeft: SIDE_MARGIN,
+      paddingRight: SIDE_MARGIN,
       paddingBottom: 72,
       fontFamily: "Inter",
       fontSize: 9,
       lineHeight: 1.4,
       color: "#1f2937",
     },
-    sidebarBar: {
-      position: "absolute",
-      top: 0,
-      bottom: 0,
-      left: 0,
+    topRow: { flexDirection: "row", marginLeft: -SIDE_MARGIN },
+    sidebar: {
       width: SIDEBAR,
       backgroundColor: accent,
-    },
-    sidebarContent: {
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: SIDEBAR,
       padding: 24,
       paddingTop: 40,
       color: onAccent,
     },
+    headRight: { flex: 1, paddingLeft: 26, paddingTop: 40 },
     sbLabel: {
       fontSize: 7.5,
       letterSpacing: 1.6,
@@ -127,54 +121,63 @@ export function ModernoDocument({ m }: { m: PdfModel }) {
   return (
     <Document title={`Presupuesto ${q.number}`} author={q.issuer.businessName} language="es-AR">
       <Page size="A4" style={s.page}>
-        <ContinuationHeader m={m} color="#111827" muted="#4b5563" accent={accent} />
-        <View fixed style={s.sidebarBar} />
-        <View style={s.sidebarContent}>
-          {q.issuer.logo ? (
-            <View style={s.logoBox}>
-              <Logo src={q.issuer.logo} style={{ maxWidth: 110 }} />
-            </View>
-          ) : null}
-          <Text style={s.sbName}>{q.issuer.businessName}</Text>
-          {q.issuer.professionalName ? (
-            <Text style={s.sbText}>{q.issuer.professionalName}</Text>
-          ) : null}
+        <ContinuationHeader
+          m={m}
+          color="#111827"
+          muted="#4b5563"
+          accent={accent}
+          style={{ marginTop: 36 }}
+        />
+        <View style={s.topRow} wrap={false}>
+          <View style={s.sidebar}>
+            {q.issuer.logo ? (
+              <View style={s.logoBox}>
+                <Logo src={q.issuer.logo} style={{ maxWidth: 110 }} />
+              </View>
+            ) : null}
+            <Text style={s.sbName}>{q.issuer.businessName}</Text>
+            {q.issuer.professionalName ? (
+              <Text style={s.sbText}>{q.issuer.professionalName}</Text>
+            ) : null}
 
-          <Text style={s.sbLabel}>Contacto</Text>
-          {[
-            q.issuer.email,
-            q.issuer.phone && `Tel. ${q.issuer.phone}`,
-            q.issuer.whatsapp && `WhatsApp ${q.issuer.whatsapp}`,
-            q.issuer.website,
-            q.issuer.address,
-            q.issuer.taxId && `CUIT ${q.issuer.taxId}`,
-          ]
-            .filter((x): x is string => Boolean(x))
-            .map((l) => (
+            <Text style={s.sbLabel}>Contacto</Text>
+            {[
+              q.issuer.email,
+              q.issuer.phone && `Tel. ${q.issuer.phone}`,
+              q.issuer.whatsapp && `WhatsApp ${q.issuer.whatsapp}`,
+              q.issuer.website,
+              q.issuer.address,
+              q.issuer.taxId && `CUIT ${q.issuer.taxId}`,
+            ]
+              .filter((x): x is string => Boolean(x))
+              .map((l) => (
+                <Text key={l} style={s.sbText}>
+                  {l}
+                </Text>
+              ))}
+
+            <Text style={s.sbLabel}>Cliente</Text>
+            <Text style={[s.sbText, { fontWeight: 700 }]}>{q.customer.name}</Text>
+            {customerLines(m).map((l) => (
               <Text key={l} style={s.sbText}>
                 {l}
               </Text>
             ))}
 
-          <Text style={s.sbLabel}>Cliente</Text>
-          <Text style={[s.sbText, { fontWeight: 700 }]}>{q.customer.name}</Text>
-          {customerLines(m).map((l) => (
-            <Text key={l} style={s.sbText}>
-              {l}
-            </Text>
-          ))}
+            <Text style={s.sbLabel}>Fechas</Text>
+            <Text style={s.sbText}>Emisión: {m.issueDate}</Text>
+            <Text style={s.sbText}>Válido hasta: {m.validUntilDate}</Text>
+            <Text style={s.sbLabel}>Moneda</Text>
+            <Text style={s.sbText}>{m.currency}</Text>
+          </View>
 
-          <Text style={s.sbLabel}>Fechas</Text>
-          <Text style={s.sbText}>Emisión: {m.issueDate}</Text>
-          <Text style={s.sbText}>Válido hasta: {m.validUntilDate}</Text>
-          <Text style={s.sbLabel}>Moneda</Text>
-          <Text style={s.sbText}>{m.currency}</Text>
+          <View style={s.headRight}>
+            <Text style={s.docLabel}>Presupuesto</Text>
+            <Text style={s.docNumber}>N.º {q.number}</Text>
+            <Text style={s.title}>{q.title}</Text>
+            {q.description ? <Text style={s.description}>{q.description}</Text> : null}
+          </View>
         </View>
-
-        <Text style={s.docLabel}>Presupuesto</Text>
-        <Text style={s.docNumber}>N.º {q.number}</Text>
-        <Text style={s.title}>{q.title}</Text>
-        {q.description ? <Text style={s.description}>{q.description}</Text> : null}
 
         <PaginatedTable
           gap={20}
@@ -247,7 +250,7 @@ export function ModernoDocument({ m }: { m: PdfModel }) {
           }
         />
 
-        <PageFooter m={m} left={SIDEBAR + 30} maxWidth={230} />
+        <PageFooter m={m} left={SIDE_MARGIN + 8} />
         <PreviewMark m={m} />
       </Page>
     </Document>
