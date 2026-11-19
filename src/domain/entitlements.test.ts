@@ -13,6 +13,7 @@ const user = (over: Partial<AccessContext> = {}): AccessContext => ({
   ownsPremiumPack: false,
   proActive: false,
   downloadsThisMonth: 0,
+  privateTemplateIds: [],
   ...over,
 });
 
@@ -54,9 +55,9 @@ describe("computeEntitlements", () => {
   });
 
   it("Pro + Pack usa el cupo técnico de Pro (no el del pack)", () => {
-    expect(
-      monthlyDownloadLimit(user({ ownsPremiumPack: true, proActive: true })),
-    ).toBe(LIMITS.proHardCeilingMonthly);
+    expect(monthlyDownloadLimit(user({ ownsPremiumPack: true, proActive: true }))).toBe(
+      LIMITS.proHardCeilingMonthly,
+    );
   });
 
   it("Pro sigue pudiendo descargar al superar el umbral de revisión", () => {
@@ -164,5 +165,40 @@ describe("decidePdfRender", () => {
       allowed: false,
       reason: "unknown_template",
     });
+  });
+
+  it("permite plantillas privadas solo a cuentas asignadas, sin marca", () => {
+    const id = "11111111-1111-4111-8111-111111111111";
+    expect(decidePdfRender(user(), { templateId: id, preview: false })).toEqual({
+      allowed: false,
+      reason: "template_locked",
+    });
+    expect(
+      decidePdfRender(user({ privateTemplateIds: [id] }), { templateId: id, preview: false }),
+    ).toMatchObject({ allowed: true, showBrand: false, allowCustomColor: true });
+    expect(decidePdfRender(ANONYMOUS, { templateId: id, preview: true })).toEqual({
+      allowed: false,
+      reason: "template_locked",
+    });
+  });
+
+  it("Gratis con plantilla privada puede descargar dentro de su cupo", () => {
+    const id = "22222222-2222-4222-8222-222222222222";
+    const e = computeEntitlements(user({ privateTemplateIds: [id] }));
+    expect(e.templates).toContain(id);
+    expect(e.privateTemplates).toEqual([id]);
+    expect(e.downloadLimit).toBe(LIMITS.freeMonthlyDownloads);
+    expect(e.cloudFeatures).toBe(false);
+  });
+
+  it("cancelar Pro no quita plantillas privadas ni el Pack", () => {
+    const id = "33333333-3333-4333-8333-333333333333";
+    const e = computeEntitlements(
+      user({ ownsPremiumPack: true, proActive: false, privateTemplateIds: [id] }),
+    );
+    expect(e.templates).toContain("ejecutivo");
+    expect(e.templates).toContain(id);
+    expect(e.cloudFeatures).toBe(false);
+    expect(e.downloadLimit).toBe(LIMITS.premiumPackMonthlyDownloads);
   });
 });

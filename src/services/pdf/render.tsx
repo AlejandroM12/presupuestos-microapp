@@ -4,6 +4,7 @@ import type { Quote } from "@/domain/quote/schema";
 import { registerPdfFonts } from "./fonts";
 import { buildPdfModel, type PdfModel, type PdfRenderOptions } from "./model";
 import { ComercialDocument } from "./templates/comercial";
+import { CustomDocument } from "./templates/custom";
 import { CreativoDocument } from "./templates/creativo";
 import { EjecutivoDocument } from "./templates/ejecutivo";
 import { MinimalistaDocument } from "./templates/minimalista";
@@ -29,6 +30,7 @@ export function hasTemplateComponent(id: string): boolean {
 export async function renderQuotePdf(quote: Quote, options: PdfRenderOptions): Promise<Buffer> {
   registerPdfFonts();
   const model = buildPdfModel(quote, options);
+  if (model.custom) return renderToBuffer(<CustomDocument m={model} />);
   const Template = TEMPLATE_COMPONENTS[model.template.id] ?? MinimalistaDocument;
   return renderToBuffer(<Template m={model} />);
 }

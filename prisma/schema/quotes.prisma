@@ -89,6 +89,10 @@ model Quote {
   paymentTerms String       @default("")
   templateId   String
   accentColor  String       @default("")
+  /// Valores de campos personalizados de una plantilla privada (mapa id → valor).
+  customFieldValues Json @default("{}")
+  /// Versión de plantilla privada usada al guardar (preserva el diseño histórico).
+  customTemplateVersionId String? @db.Uuid
 
   discountKind   AdjustmentKind @default(PERCENT)
   discountValue  Decimal        @default(0) @db.Decimal(18, 4)
@@ -110,13 +114,15 @@ model Quote {
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
-  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  customer Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  items    QuoteItem[]
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customer              Customer?              @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customTemplateVersion CustomTemplateVersion? @relation(fields: [customTemplateVersionId], references: [id], onDelete: SetNull)
+  items                 QuoteItem[]
 
   @@index([userId, updatedAt])
   @@index([userId, status])
   @@index([customerId])
+  @@index([customTemplateVersionId])
   @@map("quotes")
 }
 

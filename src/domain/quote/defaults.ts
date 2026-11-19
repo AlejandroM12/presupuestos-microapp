@@ -54,6 +54,7 @@ export function defaultQuote(date: Date = new Date()): QuoteDraft {
     taxes: [],
     templateId: FREE_TEMPLATE_ID,
     accentColor: "",
+    customFieldValues: {},
   };
 }
 

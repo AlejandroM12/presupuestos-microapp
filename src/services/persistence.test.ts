@@ -254,6 +254,7 @@ describe.skipIf(!enabled)("contexto de acceso (PostgreSQL)", () => {
       ownsPremiumPack: false,
       proActive: false,
       downloadsThisMonth: 0,
+      privateTemplateIds: [],
     });
     expect(computeEntitlements(ctx).templates).toEqual(["minimalista"]);
     expect(computeEntitlements(ANONYMOUS).authenticated).toBe(false);

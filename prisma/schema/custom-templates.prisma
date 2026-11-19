@@ -1,0 +1,113 @@
+// ---------------------------------------------------------------------------
+// Plantillas personalizadas (privadas) y administración
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum CustomTemplateStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+/// Plantilla privada desarrollada para clientes concretos. No es el catálogo público.
+model CustomTemplate {
+  id          String               @id @default(uuid()) @db.Uuid
+  /// Identificador legible único (ej. "taller-rojas-v1").
+  slug        String               @unique
+  name        String
+  description String               @default("")
+  status      CustomTemplateStatus @default(DRAFT)
+  /// Versión publicada actual (se incrementa al activar cambios).
+  version     Int                  @default(1)
+  /// Clave de renderer en código; "custom" usa el layout declarativo genérico.
+  rendererKey String               @default("custom")
+  /// Estilos: colores, tipografía, encabezado, pie. Solo datos; nunca HTML/JS arbitrario.
+  style       Json                 @default("{}")
+  /// Campos personalizados declarativos (ver docs/custom-templates.md).
+  fields      Json                 @default("[]")
+  /// Secciones opcionales del editor/PDF.
+  sections    Json                 @default("[]")
+  /// Las plantillas privadas contratadas no llevan marca AtajoLab.
+  showBrand   Boolean              @default(false)
+  createdAt   DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime             @updatedAt @db.Timestamptz(3)
+
+  versions     CustomTemplateVersion[]
+  assignments  CustomTemplateAssignment[]
+
+  @@index([status, updatedAt])
+  @@map("custom_templates")
+}
+
+/// Snapshot inmutable de una versión publicada (presupuestos históricos apuntan aquí).
+model CustomTemplateVersion {
+  id         String   @id @default(uuid()) @db.Uuid
+  templateId String   @db.Uuid
+  version    Int
+  name       String
+  style      Json
+  fields     Json
+  sections   Json
+  showBrand  Boolean
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  template CustomTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  quotes   Quote[]
+
+  @@unique([templateId, version])
+  @@map("custom_template_versions")
+}
+
+model CustomTemplateAssignment {
+  id              String    @id @default(uuid()) @db.Uuid
+  templateId      String    @db.Uuid
+  userId          String    @db.Uuid
+  /// Administrador que otorgó el acceso.
+  assignedById    String    @db.Uuid
+  assignedAt      DateTime  @default(now()) @db.Timestamptz(3)
+  revokedAt       DateTime? @db.Timestamptz(3)
+  revokeReason    String?
+  /// Administrador que revocó (si aplica).
+  revokedById     String?   @db.Uuid
+
+  template   CustomTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  user       User           @relation("CustomTemplateAssignee", fields: [userId], references: [id], onDelete: Cascade)
+  assignedBy User           @relation("CustomTemplateAssigner", fields: [assignedById], references: [id], onDelete: Restrict)
+  revokedBy  User?          @relation("CustomTemplateRevoker", fields: [revokedById], references: [id], onDelete: SetNull)
+
+  @@index([userId, revokedAt])
+  @@index([templateId, revokedAt])
+  @@map("custom_template_assignments")
+}
+
+enum AdminAuditAction {
+  TEMPLATE_CREATE
+  TEMPLATE_UPDATE
+  TEMPLATE_ACTIVATE
+  TEMPLATE_ARCHIVE
+  TEMPLATE_DUPLICATE
+  ASSIGNMENT_GRANT
+  ASSIGNMENT_REVOKE
+  ADMIN_ROLE_GRANT
+  ADMIN_ROLE_REVOKE
+}
+
+model AdminAuditLog {
+  id         String           @id @default(uuid()) @db.Uuid
+  actorId    String           @db.Uuid
+  action     AdminAuditAction
+  targetType String
+  targetId   String
+  metadata   Json             @default("{}")
+  createdAt  DateTime         @default(now()) @db.Timestamptz(3)
+
+  actor User @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([actorId, createdAt])
+  @@map("admin_audit_logs")
+}

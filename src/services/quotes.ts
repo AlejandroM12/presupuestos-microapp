@@ -10,7 +10,9 @@ import {
 } from "@/domain/quote/schema";
 import type { AdjustmentType, TaxInput } from "@/domain/quote/types";
 import { Prisma, type QuoteStatus } from "@/generated/prisma/client";
+import { looksLikeCustomTemplateId } from "@/domain/custom-template/access";
 import { db } from "@/server/db";
+import { resolveCustomTemplateVersionId } from "./custom-templates";
 
 export class NotFoundError extends Error {
   constructor(what = "Recurso") {
@@ -54,6 +56,7 @@ function buildData(quote: Quote) {
     paymentTerms: quote.paymentTerms,
     templateId: quote.templateId,
     accentColor: quote.accentColor,
+    customFieldValues: quote.customFieldValues as Prisma.InputJsonObject,
     discountKind: kindOut(quote.globalDiscount.type),
     discountValue: dbDecimal(quote.globalDiscount.value),
     surchargeKind: kindOut(quote.surcharge.type),
@@ -111,6 +114,10 @@ export function rowToDraft(row: QuoteRow): QuoteDraft {
     taxes: Array.isArray(row.taxes) ? (row.taxes as unknown as TaxInput[]) : [],
     templateId: row.templateId,
     accentColor: row.accentColor,
+    customFieldValues: (row.customFieldValues ?? {}) as Record<
+      string,
+      string | number | boolean | null
+    >,
   };
 }
 
@@ -163,6 +170,23 @@ async function assertCustomerOwned(userId: string, customerId: string | null | u
   if (!found) throw new NotFoundError("Cliente");
 }
 
+/**
+ * Si el diseño es una plantilla privada, exige una asignación vigente de esta cuenta y devuelve
+ * la versión publicada que quedará asociada al presupuesto. Para diseños del catálogo devuelve null.
+ */
+async function assertPrivateTemplateUsable(
+  userId: string,
+  templateId: string,
+): Promise<string | null> {
+  if (!looksLikeCustomTemplateId(templateId)) return null;
+  const assignment = await db.customTemplateAssignment.findFirst({
+    where: { userId, templateId, revokedAt: null, template: { status: "ACTIVE" } },
+    select: { id: true },
+  });
+  if (!assignment) throw new NotFoundError("Plantilla");
+  return resolveCustomTemplateVersionId(templateId);
+}
+
 export async function createQuote(
   userId: string,
   input: unknown,
@@ -170,10 +194,12 @@ export async function createQuote(
 ): Promise<{ id: string }> {
   const quote = quoteSchema.parse(input);
   await assertCustomerOwned(userId, options.customerId);
+  const customTemplateVersionId = await assertPrivateTemplateUsable(userId, quote.templateId);
   const { items, ...data } = buildData(quote);
   const created = await db.quote.create({
     data: {
       ...data,
+      customTemplateVersionId,
       userId,
       customerId: options.customerId ?? null,
       items: { create: items },
@@ -186,7 +212,13 @@ export async function createQuote(
 export async function getQuote(userId: string, id: string) {
   const row = await db.quote.findFirst({ where: { id, userId }, include: ownedQuoteInclude() });
   if (!row) throw new NotFoundError("Presupuesto");
-  return { id: row.id, status: row.status, customerId: row.customerId, draft: rowToDraft(row) };
+  return {
+    id: row.id,
+    status: row.status,
+    customerId: row.customerId,
+    customTemplateVersionId: row.customTemplateVersionId,
+    draft: rowToDraft(row),
+  };
 }
 
 export async function updateQuote(
@@ -197,6 +229,7 @@ export async function updateQuote(
 ): Promise<void> {
   const quote = quoteSchema.parse(input);
   await assertCustomerOwned(userId, options.customerId);
+  const customTemplateVersionId = await assertPrivateTemplateUsable(userId, quote.templateId);
   const { items, ...data } = buildData(quote);
   await db.$transaction(async (tx) => {
     const owned = await tx.quote.findFirst({ where: { id, userId }, select: { id: true } });
@@ -206,6 +239,7 @@ export async function updateQuote(
       where: { id },
       data: {
         ...data,
+        customTemplateVersionId,
         ...(options.customerId !== undefined ? { customerId: options.customerId } : {}),
         items: { create: items },
       },

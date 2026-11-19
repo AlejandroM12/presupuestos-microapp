@@ -140,6 +140,11 @@ export const quoteSchema = z.object({
   accentColor: z
     .union([z.literal(""), z.string().regex(/^#[0-9a-fA-F]{6}$/, "Color inválido")])
     .default(""),
+  /** Valores de los campos de una plantilla privada (id de campo → valor). */
+  customFieldValues: z
+    .record(z.string().max(64), z.union([z.string().max(4000), z.number(), z.boolean(), z.null()]))
+    .refine((v) => Object.keys(v).length <= 80, "Demasiados campos")
+    .default({}),
 });
 
 export type QuoteDraft = z.input<typeof quoteSchema>;

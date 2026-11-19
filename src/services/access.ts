@@ -9,7 +9,7 @@ export async function loadAccessContext(
   userId: string,
   now: Date = new Date(),
 ): Promise<AccessContext> {
-  const [purchase, subscriptions, downloads] = await Promise.all([
+  const [purchase, subscriptions, downloads, privateAssignments] = await Promise.all([
     db.templatePurchase.findUnique({
       where: { userId_product: { userId, product: PREMIUM_PACK } },
       select: { id: true },
@@ -19,6 +19,14 @@ export async function loadAccessContext(
       select: { status: true, currentPeriodEnd: true },
     }),
     db.downloadUsage.count({ where: { userId, periodKey: periodKey(now) } }),
+    db.customTemplateAssignment.findMany({
+      where: {
+        userId,
+        revokedAt: null,
+        template: { status: "ACTIVE" },
+      },
+      select: { templateId: true },
+    }),
   ]);
 
   return {
@@ -26,6 +34,7 @@ export async function loadAccessContext(
     ownsPremiumPack: purchase !== null,
     proActive: subscriptions.some((s) => isSubscriptionActive(s, now)),
     downloadsThisMonth: downloads,
+    privateTemplateIds: privateAssignments.map((a) => a.templateId),
   };
 }
 

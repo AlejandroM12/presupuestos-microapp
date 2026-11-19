@@ -54,3 +54,4 @@ next-env.d.ts
 /deploy/.env
 /deploy/backups
 /deploy/.deploy
+tmp/

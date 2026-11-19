@@ -10,6 +10,9 @@ import {
 } from "@/domain/entitlements";
 import type { Quote } from "@/domain/quote/schema";
 import { LIMITS } from "@/lib/config/plans";
+import { looksLikeCustomTemplateId } from "@/domain/custom-template/access";
+import { validateCustomFieldValues } from "@/domain/custom-template/config";
+import { CustomTemplateError, loadCustomRenderConfig } from "@/services/custom-templates";
 import { getAccessContext } from "@/server/access";
 import { DownloadLimitError, releaseDownload, reserveDownload } from "@/services/access";
 import { pdfFileName } from "@/services/pdf/model";
@@ -23,7 +26,11 @@ export function pdfError(status: number, message: string, headers?: HeadersInit,
  * Emite el PDF de un presupuesto ya validado aplicando permisos, límites y marca de agua.
  * Las descargas finales se reservan de forma atómica antes de generar y se liberan si falla.
  */
-export async function issueQuotePdf(quote: Quote, preview: boolean): Promise<Response> {
+export async function issueQuotePdf(
+  quote: Quote,
+  preview: boolean,
+  options: { customTemplateVersionId?: string | null } = {},
+): Promise<Response> {
   const access = await getAccessContext();
   const decision = decidePdfRender(access, { templateId: quote.templateId, preview });
   if (!decision.allowed) {
@@ -32,6 +39,37 @@ export async function issueQuotePdf(quote: Quote, preview: boolean): Promise<Res
         ? FAIR_USE_MESSAGE
         : DENIAL_MESSAGES[decision.reason];
     return pdfError(DENIAL_STATUS[decision.reason], message, undefined, decision.reason);
+  }
+
+  // Plantilla privada: se resuelve (y se valida) en el servidor con la sesión de quien pide el PDF.
+  let custom: Awaited<ReturnType<typeof loadCustomRenderConfig>> | undefined;
+  if (looksLikeCustomTemplateId(quote.templateId)) {
+    const userId = (await auth())?.user?.id;
+    if (!userId) return pdfError(401, DENIAL_MESSAGES.login_required, undefined, "login_required");
+    try {
+      custom = await loadCustomRenderConfig(
+        userId,
+        quote.templateId,
+        options.customTemplateVersionId,
+      );
+    } catch (err) {
+      if (err instanceof CustomTemplateError) {
+        return pdfError(403, DENIAL_MESSAGES.template_locked, undefined, "template_locked");
+      }
+      throw err;
+    }
+    const checked = validateCustomFieldValues(custom.fields, quote.customFieldValues);
+    if (!checked.ok) {
+      return NextResponse.json(
+        {
+          error: "Revisá los campos de la plantilla.",
+          code: "invalid_custom_fields",
+          fields: checked.errors,
+        },
+        { status: 422 },
+      );
+    }
+    quote = { ...quote, customFieldValues: checked.values };
   }
 
   // Descarga final: se reserva de forma atómica antes de generar y se libera si falla.
@@ -72,7 +110,13 @@ export async function issueQuotePdf(quote: Quote, preview: boolean): Promise<Res
   try {
     const pdf = await renderQuotePdf(quote, {
       templateId: quote.templateId,
-      showBrand: decision.showBrand,
+      showBrand: custom ? custom.showBrand : decision.showBrand,
+      custom: custom && {
+        name: custom.name,
+        style: custom.style,
+        fields: custom.fields,
+        sections: custom.sections,
+      },
       allowCustomColor: decision.allowCustomColor,
       preview: decision.preview,
     });

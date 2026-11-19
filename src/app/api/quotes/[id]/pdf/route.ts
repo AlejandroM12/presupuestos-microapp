@@ -21,12 +21,12 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
     }
     const { id } = await ctx.params;
     if (!isUuid(id)) throw new NotFoundError("Presupuesto");
-    const { draft } = await getQuote(user.id, id);
+    const { draft, customTemplateVersionId } = await getQuote(user.id, id);
     const parsed = quoteSchema.safeParse(draft);
     if (!parsed.success)
       return pdfError(422, "El presupuesto guardado está incompleto. Editalo y volvé a intentar.");
     const preview = new URL(request.url).searchParams.get("preview") === "1";
-    return issueQuotePdf(parsed.data, preview);
+    return issueQuotePdf(parsed.data, preview, { customTemplateVersionId });
   } catch (error) {
     return toErrorResponse(error);
   }

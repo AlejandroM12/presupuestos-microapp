@@ -1,3 +1,8 @@
+import {
+  canUsePrivateTemplate,
+  isCatalogTemplateId,
+  looksLikeCustomTemplateId,
+} from "./custom-template/access";
 import { LIMITS } from "@/lib/config/plans";
 import { FREE_TEMPLATE_ID, TEMPLATES } from "./templates";
 
@@ -10,6 +15,8 @@ export interface AccessContext {
   proActive: boolean;
   /** Descargas finales realizadas en el mes calendario en curso. */
   downloadsThisMonth: number;
+  /** Plantillas privadas activas asignadas a esta cuenta (IDs UUID). */
+  privateTemplateIds: string[];
 }
 
 export const ANONYMOUS: AccessContext = {
@@ -17,14 +24,17 @@ export const ANONYMOUS: AccessContext = {
   ownsPremiumPack: false,
   proActive: false,
   downloadsThisMonth: 0,
+  privateTemplateIds: [],
 };
 
 export interface Entitlements {
   authenticated: boolean;
   proActive: boolean;
   ownsPremiumPack: boolean;
-  /** Plantillas con las que se puede generar el PDF final. */
+  /** Plantillas del catálogo + privadas asignadas con las que se puede generar el PDF final. */
   templates: string[];
+  /** Solo las plantillas privadas asignadas (para la galería «Mis plantillas»). */
+  privateTemplates: string[];
   /** Descargas finales restantes este mes (Pro: hasta el tope técnico de uso razonable). */
   downloadsRemaining: number;
   /**
@@ -51,16 +61,20 @@ export function computeEntitlements(ctx: AccessContext): Entitlements {
   const premiumUnlocked = ctx.proActive || ctx.ownsPremiumPack;
   const pro = ctx.proActive;
   const cap = monthlyDownloadLimit(ctx);
+  const privateIds = ctx.privateTemplateIds;
+  const catalog = premiumUnlocked ? [FREE_TEMPLATE_ID, ...premiumTemplates] : [FREE_TEMPLATE_ID];
 
   return {
     authenticated: ctx.authenticated,
     proActive: ctx.proActive,
     ownsPremiumPack: ctx.ownsPremiumPack,
-    templates: premiumUnlocked ? [FREE_TEMPLATE_ID, ...premiumTemplates] : [FREE_TEMPLATE_ID],
+    templates: [...catalog, ...privateIds],
+    privateTemplates: [...privateIds],
     downloadsRemaining: Math.max(0, cap - ctx.downloadsThisMonth),
     downloadLimit: pro ? null : cap,
     downloadCap: cap,
-    allowCustomColor: premiumUnlocked,
+    // Colores: Pack/Pro o cualquier plantilla privada asignada.
+    allowCustomColor: premiumUnlocked || privateIds.length > 0,
     cloudFeatures: ctx.proActive,
   };
 }
@@ -80,28 +94,52 @@ export interface DecideOptions {
 
 /**
  * Decide si se puede emitir un PDF y con qué restricciones.
- * La marca AtajoLab solo aparece en el diseño gratuito.
+ * Catálogo público: marca solo en Minimalista.
+ * Plantillas privadas: sin marca; solo cuentas asignadas (también en vista previa).
  */
 export function decidePdfRender(ctx: AccessContext, opts: DecideOptions): RenderDecision {
-  const template = TEMPLATES.find((t) => t.id === opts.templateId);
-  if (!template) return { allowed: false, reason: "unknown_template" };
-
   const ent = computeEntitlements(ctx);
-  const showBrand = template.tier === "free";
+
+  if (isCatalogTemplateId(opts.templateId)) {
+    const template = TEMPLATES.find((t) => t.id === opts.templateId)!;
+    const showBrand = template.tier === "free";
+
+    if (opts.preview) {
+      return { allowed: true, showBrand, allowCustomColor: ent.allowCustomColor, preview: true };
+    }
+    if (!ctx.authenticated) {
+      return { allowed: false, reason: "login_required" };
+    }
+    if (!ent.templates.includes(template.id)) {
+      return { allowed: false, reason: "template_locked" };
+    }
+    if (ent.downloadsRemaining <= 0) {
+      return { allowed: false, reason: "download_limit_reached" };
+    }
+    return { allowed: true, showBrand, allowCustomColor: ent.allowCustomColor, preview: false };
+  }
+
+  // Plantilla privada (UUID) u otro id desconocido.
+  if (!looksLikeCustomTemplateId(opts.templateId)) {
+    return { allowed: false, reason: "unknown_template" };
+  }
+
+  const assigned = canUsePrivateTemplate(opts.templateId, ctx.privateTemplateIds);
+  if (!assigned) {
+    // No filtrar existencia: misma respuesta que un diseño bloqueado.
+    return { allowed: false, reason: "template_locked" };
+  }
 
   if (opts.preview) {
-    // Cualquier visitante puede ver cómo queda un diseño, siempre con marca de agua.
-    return { allowed: true, showBrand, allowCustomColor: ent.allowCustomColor, preview: true };
+    if (!ctx.authenticated) return { allowed: false, reason: "login_required" };
+    return { allowed: true, showBrand: false, allowCustomColor: true, preview: true };
   }
 
-  if (!ctx.authenticated) {
-    return { allowed: false, reason: "login_required" };
-  }
-  if (!ent.templates.includes(template.id)) return { allowed: false, reason: "template_locked" };
-  if (ctx.authenticated && ent.downloadsRemaining <= 0) {
+  if (!ctx.authenticated) return { allowed: false, reason: "login_required" };
+  if (ent.downloadsRemaining <= 0) {
     return { allowed: false, reason: "download_limit_reached" };
   }
-  return { allowed: true, showBrand, allowCustomColor: ent.allowCustomColor, preview: false };
+  return { allowed: true, showBrand: false, allowCustomColor: true, preview: false };
 }
 
 export const FAIR_USE_MESSAGE =
@@ -114,7 +152,7 @@ export const DENIAL_MESSAGES: Record<DenialReason, string> = {
   unknown_template: "El diseño elegido no existe.",
   login_required: "Creá una cuenta gratuita o iniciá sesión para descargar el PDF.",
   template_locked:
-    "Este diseño es parte del Pack Premium. Podés ver la vista previa antes de comprarlo.",
+    "No tenés acceso a este diseño. Puede requerir Pack Premium, Pro o una asignación privada.",
   download_limit_reached:
     "Alcanzaste el límite de descargas de este mes. Revisá tu plan o esperá al próximo período.",
 };
