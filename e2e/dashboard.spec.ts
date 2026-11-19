@@ -296,6 +296,7 @@ test.describe("dashboard", () => {
   }) => {
     const page = await newUser(browser, { pro: true });
     await page.goto("/dashboard/plan");
+    await page.waitForLoadState("networkidle");
     await page.getByRole("button", { name: "Cancelar suscripción" }).click();
     await page.getByRole("button", { name: "Sí, cancelar suscripción" }).click();
     // En E2E no hay credenciales de Mercado Pago: la suscripción sin id de proveedor se cancela localmente.
