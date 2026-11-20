@@ -145,7 +145,9 @@ export const LEGAL_PAGES: LegalPage[] = [
       {
         heading: "7. Cookies",
         body: [
-          "Usamos una cookie de sesión necesaria para mantenerte conectado. No usamos cookies publicitarias.",
+          "Usamos una cookie de sesión necesaria para mantenerte conectado.",
+          "Si llegás desde un anuncio, guardamos en tu navegador los parámetros de la campaña (utm_source, utm_medium, utm_campaign) para saber qué anuncio funcionó. Esos datos no incluyen información personal.",
+          "Cuando estén configuradas, las herramientas de medición de campañas (Meta Pixel, TikTok Pixel y Google Analytics 4) solo se cargan si las aceptás en el aviso de cookies; si las rechazás o tu navegador envía la señal Global Privacy Control, no se cargan. Les informamos únicamente acciones generales (por ejemplo, visita, inicio del editor, descarga de un PDF o compra) y nunca el contenido de tus presupuestos, nombres, correos o importes de tus clientes. Podés cambiar tu elección en cualquier momento.",
         ],
       },
     ],

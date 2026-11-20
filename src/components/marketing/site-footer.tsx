@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CookiePreferences } from "@/components/analytics/cookie-preferences";
 import { siteConfig } from "@/lib/config/site";
 import { Logo } from "./logo";
 
@@ -36,6 +37,7 @@ export function SiteFooter() {
           <Link href="/legal/uso-razonable" className="hover:text-foreground">
             Uso razonable
           </Link>
+          <CookiePreferences />
         </nav>
         <p className="text-xs">© {new Date().getFullYear()} AtajoLab</p>
       </div>

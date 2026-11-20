@@ -200,6 +200,10 @@ export function resetConsent() {
   notify();
 }
 
+/** Eventos disparados antes de conocer la configuración y el consentimiento (p. ej. landing_view). */
+let started = false;
+const pending: [AnalyticsEvent, EventParams][] = [];
+
 export function init(cfg: AnalyticsConfig) {
   config = cfg;
   const gpc = (navigator as Navigator & { globalPrivacyControl?: boolean }).globalPrivacyControl;
@@ -207,6 +211,8 @@ export function init(cfg: AnalyticsConfig) {
   consent = gpc ? "denied" : stored === "granted" || stored === "denied" ? stored : null;
   captureAttribution();
   if (consent === "granted") loadTrackers();
+  started = true;
+  for (const [event, params] of pending.splice(0)) track(event, params);
   notify();
 }
 
@@ -231,6 +237,10 @@ function dispatch(event: AnalyticsEvent, p: Record<string, string | number | boo
 
 export function track(event: AnalyticsEvent, params: EventParams = {}) {
   if (typeof window === "undefined") return;
+  if (!started) {
+    pending.push([event, params]);
+    return;
+  }
   const merged = sanitizeParams({
     ...currentAttribution(),
     page: window.location.pathname,
@@ -239,6 +249,14 @@ export function track(event: AnalyticsEvent, params: EventParams = {}) {
   const sent = consent === "granted" && hasTrackers();
   if (safeStorage.get("local", "ph_debug") === "1") {
     (window.__phEvents ??= []).push({ event, params: merged, sent });
+    // Se conserva también en la pestaña para poder verificar eventos entre navegaciones.
+    try {
+      const log = JSON.parse(safeStorage.get("session", "ph_debug_log") ?? "[]") as unknown[];
+      log.push({ event, params: merged, sent });
+      safeStorage.set("session", "ph_debug_log", JSON.stringify(log.slice(-100)));
+    } catch {
+      /* noop */
+    }
   }
   if (sent) dispatch(event, merged);
 }
