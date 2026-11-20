@@ -8,7 +8,8 @@ const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
 const display = Bricolage_Grotesque({ variable: "--font-bricolage", subsets: ["latin"] });
 const mono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
-const title = "AtajoLab Presupuestos: creá presupuestos profesionales en PDF";
+const title = "Creá presupuestos profesionales en minutos | AtajoLab Presupuestos";
+const ogImage = { url: "/og/presupuestos.png", width: 1200, height: 630, alt: siteConfig.name };
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
@@ -23,8 +24,15 @@ export const metadata: Metadata = {
     title,
     description: siteConfig.tagline,
     url: "/",
+    images: [ogImage],
   },
-  twitter: { card: "summary_large_image", title, description: siteConfig.tagline },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description: siteConfig.tagline,
+    images: [ogImage.url],
+  },
+  icons: { icon: "/favicon.ico" },
 };
 
 export const viewport: Viewport = { themeColor: "#14213d" };
