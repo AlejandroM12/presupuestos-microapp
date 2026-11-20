@@ -3,8 +3,8 @@ import { expect, test } from "@playwright/test";
 test.describe("editor de presupuestos", () => {
   test("la landing es pública y lleva al editor", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("Presupuestos");
-    await page.getByRole("link", { name: "Crear presupuesto gratis" }).first().click();
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("presupuestos");
+    await page.getByRole("link", { name: "Crear mi presupuesto gratis" }).first().click();
     await expect(page).toHaveURL(/\/crear$/);
   });
 

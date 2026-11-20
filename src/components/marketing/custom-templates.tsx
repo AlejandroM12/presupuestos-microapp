@@ -130,7 +130,7 @@ export function CustomTemplates() {
       className="border-t border-border bg-[linear-gradient(180deg,rgb(255_255_255/0.35),rgb(248_246_241)_40%,rgb(248_246_241))]"
     >
       <div className="mx-auto max-w-6xl scroll-mt-20 px-4 py-20 sm:px-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-strong">
           Servicio independiente de los planes
         </p>
         <h2 className="mt-3 max-w-3xl font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
@@ -226,7 +226,7 @@ export function CustomTemplates() {
                 <a
                   href={href}
                   {...(whatsappReady ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                  className="mt-4 text-sm font-medium text-brand hover:underline"
+                  className="mt-4 text-sm font-medium text-brand-strong hover:underline"
                 >
                   Consultar para {p.title.toLowerCase()}
                 </a>

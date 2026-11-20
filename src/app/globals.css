@@ -7,6 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
   --color-ink: var(--ink);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);
@@ -60,6 +61,8 @@
   --popover-foreground: oklch(0.145 0 0);
   --primary: oklch(0.27 0.05 265);
   --brand: oklch(0.66 0.19 45);
+  /* Variante oscura de la marca para texto sobre fondos claros (contraste AA). */
+  --brand-strong: oklch(0.5 0.16 45);
   --ink: oklch(0.27 0.05 265);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);

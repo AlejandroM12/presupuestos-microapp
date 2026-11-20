@@ -13,21 +13,23 @@ export function FinalCta() {
         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
           <Link
             href="/crear"
+            data-track="cta_start"
+            data-track-location="final"
             className={cn(
               buttonVariants({ size: "lg" }),
               "h-11 bg-brand px-5 text-base text-white hover:bg-brand/90",
             )}
           >
-            Crear presupuesto gratis <ArrowRight data-icon="inline-end" />
+            Crear mi presupuesto gratis <ArrowRight data-icon="inline-end" />
           </Link>
           <a
-            href="#plantillas"
+            href="#ejemplos"
             className={cn(
               buttonVariants({ variant: "outline", size: "lg" }),
               "h-11 border-white/25 bg-transparent px-5 text-base text-white hover:bg-white/10 hover:text-white",
             )}
           >
-            Ver plantillas
+            Ver ejemplos
           </a>
         </div>
       </div>

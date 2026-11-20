@@ -23,8 +23,10 @@ export function Logo({ className }: { className?: string }) {
         </svg>
       </span>
       <span className="font-display text-[1.05rem] font-semibold tracking-tight">
-        Atajo<span className="text-brand">Lab</span>
-        <span className="ml-1.5 font-normal text-muted-foreground">Presupuestos</span>
+        Atajo<span className="text-brand-strong">Lab</span>
+        <span className="ml-1.5 hidden font-normal text-muted-foreground min-[430px]:inline">
+          Presupuestos
+        </span>
       </span>
     </Link>
   );

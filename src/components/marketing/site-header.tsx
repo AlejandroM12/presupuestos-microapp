@@ -31,6 +31,8 @@ export function SiteHeader() {
           </Link>
           <Link
             href="/crear"
+            data-track="cta_start"
+            data-track-location="header"
             aria-label="Crear presupuesto"
             className={buttonVariants({ size: "lg" })}
           >

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   Brush,
   Camera,
@@ -10,6 +11,12 @@ import {
   Wrench,
   Zap,
 } from "lucide-react";
+
+const segmentLinks: Record<string, string> = {
+  Técnicos: "/para/tecnicos",
+  Albañiles: "/para/construccion",
+  Constructores: "/para/construccion",
+};
 
 const people = [
   { icon: Zap, label: "Electricistas" },
@@ -34,17 +41,35 @@ export function Audience() {
         Unidades, monedas y condiciones editables: se adapta a tu rubro, no al revés.
       </p>
       <ul className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {people.map(({ icon: Icon, label }) => (
-          <li
-            key={label}
-            className="flex items-center gap-3 rounded-lg border border-border bg-white px-4 py-3 text-sm font-medium text-ink"
-          >
-            <Icon className="size-4.5 text-brand" strokeWidth={1.8} /> {label}
-          </li>
-        ))}
+        {people.map(({ icon: Icon, label }) => {
+          const href = segmentLinks[label];
+          const body = (
+            <>
+              <Icon className="size-4.5 text-brand" strokeWidth={1.8} /> {label}
+            </>
+          );
+          const cls =
+            "flex min-h-12 items-center gap-3 rounded-lg border border-border bg-white px-4 py-3 text-sm font-medium text-ink";
+          return (
+            <li key={label}>
+              {href ? (
+                <Link href={href} className={`${cls} hover:border-ink`}>
+                  {body}
+                </Link>
+              ) : (
+                <div className={cls}>{body}</div>
+              )}
+            </li>
+          );
+        })}
       </ul>
       <p className="mt-4 text-sm text-muted-foreground">
-        …y profesionales independientes y prestadores de servicios en general.
+        …y profesionales independientes y prestadores de servicios en general. También hay ejemplos
+        para{" "}
+        <Link href="/para/talleres" className="font-medium text-ink underline underline-offset-4">
+          talleres mecánicos
+        </Link>
+        .
       </p>
     </section>
   );

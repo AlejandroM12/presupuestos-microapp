@@ -7,5 +7,5 @@ export const siteConfig = {
   url: process.env.APP_URL ?? "https://presupuestos.atajolab.dev",
   locale: "es-AR",
   tagline:
-    "Creá presupuestos profesionales, descargalos en PDF y compartilos con tus clientes en minutos.",
+    "Creá presupuestos profesionales en minutos. Personalizalos con tu logo, descargalos en PDF y compartilos con tus clientes. Empezá gratis.",
 } as const;

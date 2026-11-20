@@ -3,9 +3,11 @@ import { Check } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { PLANS, PRICING } from "@/lib/config/plans";
 import { formatArs } from "@/lib/format";
+import { salesOpen } from "@/lib/config/sales";
 import { cn } from "@/lib/utils";
 
 export function Pricing() {
+  const open = salesOpen();
   const cards = [
     {
       plan: PLANS.free,
@@ -38,10 +40,12 @@ export function Pricing() {
         Precios claros
       </h2>
       <p className="mt-3 max-w-2xl text-muted-foreground">
-        Empezá gratis. Pagás solo si necesitás más diseños o más volumen.
+        {open
+          ? "Empezá gratis. Pagás solo si necesitás más diseños o más volumen."
+          : "Empezá gratis. Más diseños y más volumen llegan próximamente."}
       </p>
-      <div className="mt-12 grid gap-6 lg:grid-cols-3">
-        {cards.map(({ plan, price, note, cta, href, highlight }) => {
+      <div className={cn("mt-8 grid gap-6", open ? "lg:grid-cols-3" : "lg:grid-cols-2")}>
+        {(open ? cards : cards.slice(0, 1)).map(({ plan, price, note, cta, href, highlight }) => {
           const muted = highlight ? "text-white/70" : "text-muted-foreground";
           return (
             <div
@@ -69,6 +73,8 @@ export function Pricing() {
               ))}
               <Link
                 href={href}
+                data-track={href === "/crear" ? "cta_start" : undefined}
+                data-track-location={href === "/crear" ? "precios" : undefined}
                 className={cn(
                   buttonVariants({ variant: highlight ? "secondary" : "default", size: "lg" }),
                   "mt-7 h-10 w-full",
@@ -80,10 +86,19 @@ export function Pricing() {
             </div>
           );
         })}
+        {!open && (
+          <div className="flex flex-col justify-center rounded-xl border border-dashed border-border bg-white/60 p-7">
+            <h3 className="font-display text-xl font-semibold text-ink">Próximamente</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Estamos preparando más diseños y un plan para quienes presupuestan todos los días.
+              Mientras tanto, el uso gratuito sigue disponible.
+            </p>
+          </div>
+        )}
       </div>
       <p className="mt-6 text-xs text-muted-foreground">
-        Precios en pesos argentinos. Pagos a través de Mercado Pago. Los documentos generados son
-        presupuestos comerciales, no comprobantes fiscales.
+        {open ? "Precios en pesos argentinos. Pagos a través de Mercado Pago. " : ""}Los documentos
+        generados son presupuestos comerciales, no comprobantes fiscales.
       </p>
     </section>
   );

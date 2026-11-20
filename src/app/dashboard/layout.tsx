@@ -25,7 +25,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           {admin && (
             <Link
               href="/admin/plantillas"
-              className="text-xs font-medium text-brand hover:underline"
+              className="text-xs font-medium text-brand-strong hover:underline"
             >
               Administración
             </Link>

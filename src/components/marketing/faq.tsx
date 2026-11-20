@@ -59,7 +59,24 @@ export const FAQ_ITEMS = [
   },
 ];
 
-export function Faq() {
+/** Preguntas que mencionan compras o planes pagos: se ocultan mientras las ventas estén cerradas. */
+const PAID_TOPICS = ["Pack Premium", "con Pro", "cancelo Pro", "Cómo se paga", "contratar Pro"];
+
+export function faqItems(salesAreOpen: boolean) {
+  if (salesAreOpen) return FAQ_ITEMS;
+  const free = FAQ_ITEMS.filter(
+    (i) => !PAID_TOPICS.some((t) => i.q.toLowerCase().includes(t.toLowerCase())),
+  );
+  return [
+    ...free,
+    {
+      q: "¿Va a haber planes pagos?",
+      a: "Estamos preparando más diseños y un plan para uso intensivo. El uso gratuito (editor, vista previa y tres PDF por mes) sigue disponible.",
+    },
+  ];
+}
+
+export function Faq({ items = FAQ_ITEMS }: { items?: typeof FAQ_ITEMS }) {
   return (
     <section id="preguntas" className="border-t border-border bg-white/60">
       <div className="mx-auto max-w-3xl scroll-mt-20 px-4 py-20 sm:px-6">
@@ -67,7 +84,7 @@ export function Faq() {
           Preguntas frecuentes
         </h2>
         <div className="mt-10 divide-y divide-border border-y border-border">
-          {FAQ_ITEMS.map((item) => (
+          {items.map((item) => (
             <details key={item.q} className="group py-4">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium text-ink [&::-webkit-details-marker]:hidden">
                 {item.q}

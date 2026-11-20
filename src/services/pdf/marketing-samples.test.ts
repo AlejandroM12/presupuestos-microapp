@@ -36,10 +36,11 @@ describe.runIf(process.env.PDF_MARKETING_DIR)("PDF de muestra para marketing", (
 
     // Comparación de los seis diseños con el mismo presupuesto
     for (const t of TEMPLATES) await render(`diseno-${t.id}.pdf`, "servicios-tecnicos", t.id);
-    // Ejemplos por rubro con diseños del catálogo
-    await render("rubro-talleres.pdf", "taller-mecanico", "tecnico");
-    await render("rubro-construccion.pdf", "construccion", "ejecutivo");
-    await render("rubro-tecnicos.pdf", "servicios-tecnicos", "moderno");
+    // Ejemplos por rubro
+    // Con el diseño gratuito: todo lo que se muestra como ejemplo está disponible hoy.
+    await render("rubro-talleres.pdf", "taller-mecanico", "minimalista");
+    await render("rubro-construccion.pdf", "construccion", "minimalista");
+    await render("rubro-tecnicos.pdf", "servicios-tecnicos", "minimalista");
     // Imagen principal: el diseño gratuito
     await render("hero-minimalista.pdf", "servicios-tecnicos", "minimalista");
   }, 120_000);
