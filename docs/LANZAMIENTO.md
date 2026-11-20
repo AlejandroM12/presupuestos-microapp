@@ -9,7 +9,8 @@ Estado al 2026-11-20. Los precios no cambian: Pack Premium $9.900 ARS (pago úni
 | Credenciales de Mercado Pago de **producción** (cuenta MLA/Argentina) | Cargadas; verificadas (Checkout Pro, Suscripciones y Pagos responden) sin generar cargos |
 | Webhook `POST /api/webhooks/mercadopago` | Verificado: 401 sin firma / firma inválida / firma vencida; firma válida procesada; evento repetido = `duplicate`; tipos desconocidos ignorados. Falta ver un evento **real** de Mercado Pago |
 | **Compuerta comercial** (`SALES_ENABLED`) | **Cerrada.** Con credenciales cargadas, cualquier compra devuelve 403 `sales_closed` en el servidor. Verificado en producción |
-| Compra real controlada | Preparada (ver abajo); falta indicar la cuenta autorizada |
+| Checkout en producción | **Verificado hasta la instancia de pago** (2026-11-20): el titular llegó al checkout de Mercado Pago desde *Mi plan*. Evidencia en el servidor: una suscripción **Pro mensual** creada en Mercado Pago (estado `PENDING`, con identificador de preapproval, 20:21 UTC). Del **Pack Premium** el titular reporta haber llegado al checkout, pero el servidor **no tiene ningún pago registrado** (0 pagos), así que ese flujo se repetirá al validar |
+| Compra real controlada | Cuenta autorizada (`SALES_ALLOWLIST`, 1 cuenta). **En pausa** hasta contar con un comprador (cuenta o medio de pago distinto de la recaudadora) |
 | Textos legales | Datos confirmados cargados; borrador hasta resolver los requisitos fiscales y legales (`docs/REQUISITOS_LEGALES_FISCALES.md`) |
 | Ventas públicas | **No abiertas** |
 
@@ -48,6 +49,12 @@ Para volver a cerrar las ventas: `SALES_ENABLED=false` (misma herramienta). Los 
 ## Datos legales
 
 Cargados con los datos confirmados el 2026-11-20 (titular, correo de soporte, jurisdicción, política de reembolsos, aviso de precios, Pack permanente, retención de 10 años): ver `docs/REQUISITOS_LEGALES_FISCALES.md`. **Siguen pendientes** y se muestran como `[COMPLETAR]` (los textos permanecen en borrador): domicilio legal, CUIT, condición frente a ARCA, tratamiento de IVA y situación frente a la AAIP. No bloquean la compra controlada, sí la apertura pública de ventas.
+
+## Estado de la validación comercial (pausada)
+
+Verificado: credenciales de producción, creación de preferencia y de suscripción en Mercado Pago, acceso al checkout desde *Mi plan* y compuerta.
+
+**Pendiente (requiere un comprador distinto de la cuenta recaudadora)**: pago real del Pack, recepción del webhook real, activación de beneficios, correo de confirmación, reembolso con reversión del Pack y suscripción Pro mensual con su primera cuota y cancelación. No se simuló ningún pago aprobado. Al retomar: pasar por *Mi plan* (se expira solo el intento de suscripción pendiente) y seguir la sección "Compra real controlada".
 
 ## Qué NO se hizo (a propósito)
 

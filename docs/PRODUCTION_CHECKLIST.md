@@ -29,7 +29,8 @@ Estado real de cada punto, con evidencia. Estados: **Implementado**, **Probado l
 | Estructura declarativa de plantillas privadas | Probado localmente · **Verificado en producción** (smoke) | Variantes de encabezado, tabla y totales, columnas, fichas, aprobación, anticipo/saldo; compatibilidad con configuraciones previas |
 | Compuerta comercial (`SALES_ENABLED` / `SALES_ALLOWLIST`) | **Verificado en producción** | Con credenciales reales cargadas, `POST /api/billing/pack` y `/subscription` devuelven 403 `sales_closed`; 0 pagos y 0 suscripciones creados. Tests `sales-gate.test.ts` |
 | Mercado Pago producción: credenciales y APIs | **Verificado en producción** (sin cargos) | Ver `docs/mercadopago.md` |
-| Mercado Pago producción: cobro y reembolso reales | **Pendiente de aprobación** | Compra controlada (`docs/LANZAMIENTO.md`); falta la cuenta autorizada |
+| Mercado Pago producción: checkout hasta la instancia de pago | **Verificado en producción** (2026-11-20) | El titular llegó al checkout desde *Mi plan*; el servidor registra una suscripción Pro mensual creada en Mercado Pago (`PENDING`). Pack: reportado por el titular, sin registro en el servidor (0 pagos) |
+| Mercado Pago producción: pago real, webhook real, activación, reembolso y suscripción | **Pendiente** (bloqueado por falta de un comprador) | Cuenta autorizada por `SALES_ALLOWLIST`; ventas públicas cerradas. Ver `docs/LANZAMIENTO.md` |
 | Resend | **Verificado** (por el titular) | Correo recibido |
 | ntfy / UptimeRobot | **Verificado** (por el titular) | Notificaciones recibidas; monitor activo cada 5 min sobre `/api/health` |
 | Backups | Locales automáticos (decisión del titular: sin copia externa) | R2 descartado; los backups quedan solo en el VPS |
