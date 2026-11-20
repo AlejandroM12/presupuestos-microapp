@@ -10,7 +10,7 @@ Estado al 2026-11-20. Los precios no cambian: Pack Premium $9.900 ARS (pago úni
 | Webhook `POST /api/webhooks/mercadopago` | Verificado: 401 sin firma / firma inválida / firma vencida; firma válida procesada; evento repetido = `duplicate`; tipos desconocidos ignorados. Falta ver un evento **real** de Mercado Pago |
 | **Compuerta comercial** (`SALES_ENABLED`) | **Cerrada.** Con credenciales cargadas, cualquier compra devuelve 403 `sales_closed` en el servidor. Verificado en producción |
 | Compra real controlada | Preparada (ver abajo); falta indicar la cuenta autorizada |
-| Textos legales | Borradores; faltan datos del titular (`src/content/legal-data.ts`) |
+| Textos legales | Datos confirmados cargados; borrador hasta resolver los requisitos fiscales y legales (`docs/REQUISITOS_LEGALES_FISCALES.md`) |
 | Ventas públicas | **No abiertas** |
 
 ## Cómo funciona la compuerta
@@ -45,25 +45,9 @@ Cuando la compra controlada salió bien **y** los textos legales no tienen datos
 
 Para volver a cerrar las ventas: `SALES_ENABLED=false` (misma herramienta). Los compradores existentes conservan lo adquirido.
 
-## Datos legales necesarios (única solicitud)
+## Datos legales
 
-Se cargan en `src/content/legal-data.ts` (si me los pasás, los cargo yo). Entre paréntesis, una propuesta habitual para que decidas rápido; **debe validarla tu contador o asesor**:
-
-1. **Razón social o nombre y apellido del titular**.
-2. **CUIT**.
-3. **Domicilio legal** completo.
-4. **Email de contacto y soporte** (el que figurará en los textos).
-5. **Tratamiento de IVA en los precios** (p. ej. "IVA incluido" o "sin IVA, monotributista").
-6. **Jurisdicción** (p. ej. "los tribunales ordinarios de la ciudad de Formosa").
-7. **Cláusula de limitación de responsabilidad** (o confirmar que se redacta con el asesor).
-8. **Inscripción del registro de datos ante la AAIP**, o aclaración de que no corresponde.
-9. **Política de reembolsos de Pro** para períodos ya iniciados (p. ej. "no se reembolsan períodos iniciados; se puede cancelar para evitar renovaciones").
-10. **Plazo de aviso de cambios de precio** (p. ej. "30 días corridos").
-11. **Alcance de "permanente" del Pack Premium** (p. ej. "mientras el servicio esté disponible").
-12. **Plazo de conservación de registros financieros** (p. ej. "10 años").
-13. **Cuenta autorizada para la compra real controlada** (el email).
-
-Ya están resueltos sin tu intervención: ubicación del servidor (Falkenstein, Alemania), retención de backups (14 días) y política de logs.
+Cargados con los datos confirmados el 2026-11-20 (titular, correo de soporte, jurisdicción, política de reembolsos, aviso de precios, Pack permanente, retención de 10 años): ver `docs/REQUISITOS_LEGALES_FISCALES.md`. **Siguen pendientes** y se muestran como `[COMPLETAR]` (los textos permanecen en borrador): domicilio legal, CUIT, condición frente a ARCA, tratamiento de IVA y situación frente a la AAIP. No bloquean la compra controlada, sí la apertura pública de ventas.
 
 ## Qué NO se hizo (a propósito)
 

@@ -10,8 +10,12 @@
 export interface LegalData {
   /** Razón social o nombre y apellido del titular. */
   holderName: string;
-  /** CUIT del titular. */
+  /** Nombre comercial bajo el que se ofrece el servicio. */
+  tradeName: string;
+  /** CUIT del titular (no se declara hasta tenerlo). */
   taxId: string;
+  /** Condición frente a ARCA (monotributo, responsable inscripto…): no se declara hasta verificarla. */
+  taxStatus: string;
   /** Domicilio legal completo. */
   address: string;
   /** Email de contacto y soporte. */
@@ -35,18 +39,27 @@ export interface LegalData {
 }
 
 export const LEGAL_DATA: LegalData = {
-  holderName: "",
+  holderName: "Axel Alejandro Morel",
+  tradeName: "AtajoLab",
+  // Pendientes (no se inventan ni se declaran sin verificar): ver docs/REQUISITOS_LEGALES_FISCALES.md
   taxId: "",
+  taxStatus: "",
   address: "",
-  supportEmail: "",
+  // Correo oficial de AtajoLab (el que publica el sitio institucional atajolab.dev).
+  supportEmail: "atajolab.tools@gmail.com",
   priceTaxNote: "",
-  jurisdiction: "",
-  liabilityClause: "",
+  jurisdiction:
+    "los tribunales ordinarios de la ciudad de Formosa, Argentina, sin perjuicio del derecho del consumidor a optar por el juez del lugar de cumplimiento de la obligación o de su domicilio, conforme al artículo 36 de la Ley 24.240",
+  liabilityClause:
+    "El servicio se brinda con esfuerzos razonables de disponibilidad y exactitud. Los cálculos y el contenido de cada presupuesto deben ser revisados por quien lo emite, que es el único responsable de lo que ofrece a sus clientes. No respondemos por la disponibilidad ininterrumpida del servicio ni por los acuerdos entre quienes emiten un presupuesto y sus clientes. Esta cláusula no excluye ni limita las responsabilidades que la ley pone a nuestro cargo ni los derechos que la legislación de defensa del consumidor reconoce a los consumidores.",
+  // No se declara inscripción ni exención ante la AAIP sin haberlo verificado.
   dataRegistration: "",
-  refundPolicy: "",
-  priceChangeNotice: "",
-  packScope: "",
-  financialRetention: "",
+  refundPolicy:
+    "Si sos consumidor, podés revocar la contratación dentro de los 10 días corridos desde que se concretó o desde que el servicio quedó disponible, lo que ocurra último, y te reintegramos el importe abonado por el mismo medio de pago. Fuera de ese plazo no se reembolsan períodos ya iniciados, salvo error de cobro, cobro duplicado o falla grave del servicio imputable a nosotros; podés cancelar la renovación en cualquier momento y mantenés el acceso hasta el fin del período pagado.",
+  priceChangeNotice: "30 días corridos",
+  packScope:
+    "El Pack Premium es permanente: no tiene renovación ni vencimiento programado y se mantiene mientras el servicio esté disponible. Si el servicio se discontinuara, te avisaremos con al menos 30 días de anticipación.",
+  financialRetention: "10 años (sujeto a validación de las obligaciones aplicables)",
 };
 
 /** Hechos técnicos verificados del servicio (no requieren datos del titular). */

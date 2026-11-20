@@ -19,10 +19,15 @@ export interface LegalPage {
 }
 
 const D = LEGAL_DATA;
-const HOLDER =
-  D.holderName.trim() && D.taxId.trim() && D.address.trim()
-    ? `${D.holderName.trim()} (CUIT ${D.taxId.trim()}), con domicilio legal en ${D.address.trim()}`
-    : placeholder("razón social o nombre del titular, CUIT y domicilio legal");
+/** Identificación del titular: datos confirmados más marcadores visibles para los que faltan. */
+const HOLDER = [
+  `${D.holderName.trim()}${D.tradeName.trim() ? `, que opera bajo el nombre comercial ${D.tradeName.trim()}` : ""}`,
+  D.taxId.trim() ? `CUIT ${D.taxId.trim()}` : placeholder("CUIT del titular"),
+  D.taxStatus.trim()
+    ? `condición frente a ARCA: ${D.taxStatus.trim()}`
+    : placeholder("condición frente a ARCA, una vez verificada"),
+  D.address.trim() ? `con domicilio legal en ${D.address.trim()}` : placeholder("domicilio legal"),
+].join(", ");
 const CONTACT = filled(D.supportEmail, "email de contacto y soporte");
 
 export const LEGAL_PAGES: LegalPage[] = [
@@ -216,9 +221,7 @@ export const LEGAL_PAGES: LegalPage[] = [
       },
       {
         heading: "4. Alcance",
-        body: [
-          `El acceso es permanente ${filled(D.packScope, "alcance temporal de «permanente», p. ej. mientras el servicio esté disponible")}.`,
-        ],
+        body: [filled(D.packScope, "alcance temporal de «permanente»")],
       },
     ],
   },

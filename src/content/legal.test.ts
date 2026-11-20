@@ -6,13 +6,28 @@ afterEach(() => {
 });
 
 describe("textos legales", () => {
-  it("con los datos vacíos todas las páginas con campos pendientes quedan marcadas como borrador", async () => {
+  it("los datos confirmados figuran y los pendientes quedan visibles sin declararse", async () => {
     const legal = await import("./legal");
-    expect(legal.pendingLegalFields().length).toBeGreaterThanOrEqual(10);
+    const pending = legal.pendingLegalFields().join(" | ");
+    // Pendientes: no se inventan ni se declaran sin verificar
+    for (const hint of ["CUIT", "condición frente a ARCA", "domicilio legal", "IVA", "AAIP"]) {
+      expect(pending).toContain(hint);
+    }
+    expect(legal.pendingLegalFields()).toHaveLength(5);
+    const text = JSON.stringify(legal.LEGAL_PAGES);
+    // Confirmados
+    expect(text).toContain("Axel Alejandro Morel, que opera bajo el nombre comercial AtajoLab");
+    expect(text).toContain("atajolab.tools@gmail.com");
+    expect(text).toContain("ciudad de Formosa");
+    expect(text).toContain("Ley 24.240");
+    expect(text).toContain("30 días corridos");
+    expect(text).toContain("10 años");
+    expect(text).toContain("no tiene renovación ni vencimiento programado");
+    expect(text).toContain("Falkenstein (Alemania)");
+    // No se afirma inscripción ni exención ante la AAIP
+    expect(text).not.toMatch(/inscript[oa] ante la AAIP|exent[oa]/i);
+    // Mientras haya pendientes, las páginas afectadas siguen como borrador
     expect(legal.LEGAL_PAGES.some((p) => !legal.isLegalPageComplete(p))).toBe(true);
-    // Los hechos técnicos verificados no quedan como pendientes
-    expect(legal.pendingLegalFields().join(" ")).not.toContain("retención de backups");
-    expect(JSON.stringify(legal.LEGAL_PAGES)).toContain("Falkenstein (Alemania)");
   });
 
   it("al completar los datos del titular desaparecen los marcadores y las páginas quedan completas", async () => {
@@ -27,7 +42,9 @@ describe("textos legales", () => {
     expect(legal.pendingLegalFields()).toEqual([]);
     expect(legal.LEGAL_PAGES.every((p) => legal.isLegalPageComplete(p))).toBe(true);
     const text = JSON.stringify(legal.LEGAL_PAGES);
-    expect(text).toContain("valor-holderName (CUIT 20-00000000-0)");
+    expect(text).toContain(
+      "valor-holderName, que opera bajo el nombre comercial valor-tradeName, CUIT 20-00000000-0, condición frente a ARCA: valor-taxStatus, con domicilio legal en valor-address",
+    );
     expect(text).toContain("valor-jurisdiction");
     expect(text).not.toContain("COMPLETAR");
   });
