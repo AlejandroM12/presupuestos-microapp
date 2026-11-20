@@ -37,6 +37,7 @@ import {
   ItemsSection,
 } from "./form-sections";
 import { CustomFieldsSection } from "./custom-fields-section";
+import { FitToWidth } from "./fit-to-width";
 import { PdfPreview } from "./pdf-preview";
 import { DesignSection } from "./design-section";
 import { QuotePreview } from "./quote-preview";
@@ -129,7 +130,7 @@ function EditorForm({
   const [shareError, setShareError] = useState("");
   const [pdfBusy, setPdfBusy] = useState(false);
   const [nativeShare, setNativeShare] = useState(false);
-  const { entitlements, refresh: refreshEntitlements } = useEntitlements();
+  const { entitlements, purchasesOpen, refresh: refreshEntitlements } = useEntitlements();
   const { templates: privateTemplates } = usePrivateTemplates(entitlements.authenticated);
   const router = useRouter();
   const quoteId = cloud?.quoteId ?? null;
@@ -444,6 +445,7 @@ function EditorForm({
             templateId={values.templateId}
             accentColor={values.accentColor ?? ""}
             entitlements={entitlements}
+            purchasesOpen={purchasesOpen}
             privateTemplates={privateTemplates}
             setValue={setValue}
             onPreview={previewDesign}
@@ -465,13 +467,15 @@ function EditorForm({
           {activePrivate ? (
             <PdfPreview quote={values} />
           ) : (
-            <QuotePreview
-              quote={{
-                ...values,
-                accentColor: entitlements.allowCustomColor ? values.accentColor : "",
-              }}
-              totals={totals}
-            />
+            <FitToWidth>
+              <QuotePreview
+                quote={{
+                  ...values,
+                  accentColor: entitlements.allowCustomColor ? values.accentColor : "",
+                }}
+                totals={totals}
+              />
+            </FitToWidth>
           )}
           <div className="mx-auto mt-5 max-w-[640px] space-y-3">
             <div className="flex flex-wrap items-center gap-2">

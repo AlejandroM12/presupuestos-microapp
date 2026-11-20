@@ -15,6 +15,8 @@ interface Props {
   templateId: string;
   accentColor: string;
   entitlements: Entitlements;
+  /** Con las compras cerradas no se ofrece comprar el Pack. */
+  purchasesOpen: boolean;
   privateTemplates?: PrivateTemplateMeta[];
   setValue: UseFormSetValue<QuoteDraft>;
   onPreview: () => void;
@@ -25,6 +27,7 @@ export function DesignSection({
   templateId,
   accentColor,
   entitlements,
+  purchasesOpen,
   privateTemplates = [],
   setValue,
   onPreview,
@@ -121,7 +124,7 @@ export function DesignSection({
           <Lock className="size-4 text-brand" aria-hidden />
           <p className="min-w-0 flex-1 text-ink">
             <strong>{selected.name}</strong> es un diseño premium. Podés ver cómo queda tu
-            presupuesto antes de comprarlo.
+            presupuesto con tus datos.
           </p>
           <Button
             type="button"
@@ -132,7 +135,9 @@ export function DesignSection({
           >
             <Eye data-icon="inline-start" /> Ver vista previa
           </Button>
-          <BuyPackButton authenticated={entitlements.authenticated} returnTo="/crear" />
+          {purchasesOpen && (
+            <BuyPackButton authenticated={entitlements.authenticated} returnTo="/crear" />
+          )}
         </div>
       )}
 

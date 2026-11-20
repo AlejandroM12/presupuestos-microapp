@@ -3,20 +3,26 @@
 import { useCallback, useEffect, useState } from "react";
 import { ANONYMOUS, computeEntitlements, type Entitlements } from "@/domain/entitlements";
 
-const FALLBACK = computeEntitlements(ANONYMOUS);
+const FALLBACK: Loaded = { ...computeEntitlements(ANONYMOUS), purchasesOpen: false };
 
-async function fetchEntitlements(): Promise<Entitlements | null> {
+type Loaded = Entitlements & { purchasesOpen: boolean };
+
+async function fetchEntitlements(): Promise<Loaded | null> {
   try {
     const response = await fetch("/api/me/entitlements", { cache: "no-store" });
-    return response.ok ? ((await response.json()) as Entitlements) : null;
+    return response.ok ? ((await response.json()) as Loaded) : null;
   } catch {
     return null;
   }
 }
 
 /** Permisos informativos para la interfaz; el servidor los vuelve a validar en cada acción. */
-export function useEntitlements(): { entitlements: Entitlements; refresh: () => Promise<void> } {
-  const [value, setValue] = useState<Entitlements>(FALLBACK);
+export function useEntitlements(): {
+  entitlements: Entitlements;
+  purchasesOpen: boolean;
+  refresh: () => Promise<void>;
+} {
+  const [value, setValue] = useState<Loaded>(FALLBACK);
 
   const refresh = useCallback(async () => {
     const data = await fetchEntitlements();
@@ -33,5 +39,6 @@ export function useEntitlements(): { entitlements: Entitlements; refresh: () => 
     };
   }, []);
 
-  return { entitlements: value, refresh };
+  const { purchasesOpen, ...entitlements } = value;
+  return { entitlements, purchasesOpen, refresh };
 }

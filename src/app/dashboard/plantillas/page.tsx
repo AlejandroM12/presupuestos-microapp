@@ -7,6 +7,7 @@ import { TemplateThumb } from "@/components/marketing/template-thumb";
 import { buttonVariants } from "@/components/ui/button";
 import { TEMPLATES } from "@/domain/templates";
 import { PRICING } from "@/lib/config/plans";
+import { canPurchase } from "@/lib/config/sales";
 import { formatArs } from "@/lib/format";
 import { requireUserWithEntitlements } from "@/server/pro";
 import { listAssignedCustomTemplates } from "@/services/custom-templates";
@@ -24,7 +25,7 @@ export default async function TemplatesPage() {
         title="Plantillas"
         description="Los diseños disponibles para tus PDF. Podés previsualizar cualquiera con tus datos."
         actions={
-          lockedCount > 0 ? (
+          lockedCount > 0 && canPurchase(user.email) ? (
             <BuyPackButton
               authenticated
               returnTo="/dashboard/plantillas"
