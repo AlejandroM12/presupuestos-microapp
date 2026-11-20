@@ -1,6 +1,6 @@
 # Mercado Pago
 
-> **Estado**: implementado y probado con un doble del proveedor (`FakeGateway`) y con el validador de firmas oficial. **No se verificó con credenciales ni cobros reales.** No habilitar cobros reales hasta completar la lista de verificación de abajo.
+> **Estado (2026-11-20)**: credenciales de **producción** cargadas y verificadas contra la API (Checkout Pro, Suscripciones y Pagos responden; cuenta de Argentina), sin cargos. Webhook verificado de punta a punta con notificaciones firmadas de prueba. **Las ventas están cerradas** por la compuerta `SALES_ENABLED` (ver `docs/LANZAMIENTO.md`). Falta validar un cobro y un reembolso **reales** (compra controlada).
 
 ## Qué cubre
 
@@ -54,3 +54,11 @@ Revisado en la documentación de Mercado Pago (suscripciones, `authorized_paymen
 - Al alta, Mercado Pago valida la tarjeta con un cargo pequeño y la primera cuota se cobra aproximadamente una hora después: Pro **no** se activa de inmediato en el alta, solo con el primer cobro aprobado.
 
 **Pendiente de sandbox**: confirmar con credenciales de prueba el payload real y el orden de notificaciones. Los cobros productivos siguen deshabilitados hasta completar la lista de verificación.
+
+## Verificación de producción (2026-11-20)
+
+- Token `APP_USR` (producción), sitio MLA. `GET /users/me`, `/v1/payment_methods`, `/preapproval/search` y `/v1/payments/search` responden 200; `POST /preapproval` con datos inválidos responde 400 (la API de suscripciones es accesible); `POST /checkout/preferences` devuelve 201 con checkout en `www.mercadopago.com.ar` (preferencia de prueba con vencimiento a los 15 minutos, no cobra).
+- Webhook (desde el contenedor, con el secreto real sin imprimirlo): sin firma, firma inválida o vencida → 401; firma válida con pago inexistente → `ignored` (consulta real a la API); tipo desconocido → `ignored`; mismo evento repetido → `duplicate`. Por HTTPS público sin firma → 401.
+- La cuenta de Mercado Pago ya tenía movimientos previos (`/v1/payments/search` informa pagos anteriores): los pagos cuyo `external_reference` no pertenece a la app se ignoran, por lo que no se mezclan.
+- Eventos habilitados en el panel: Pagos y Planes y suscripciones (incluye `subscription_preapproval` y los pagos de suscripciones). Se puede usar "Simular notificación" del panel para ver un evento real firmado en `webhook_events`.
+- Las preferencias envían su propia `notification_url`; las suscripciones usan la URL configurada en el panel.

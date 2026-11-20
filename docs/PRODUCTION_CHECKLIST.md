@@ -2,7 +2,7 @@
 
 Estado real de cada punto, con evidencia. Estados: **Implementado**, **Probado localmente**, **Probado en sandbox**, **Desplegado**, **Verificado en producción**, **Bloqueado por credenciales**, **Pendiente de aprobación**.
 
-Última actualización: 2026-11-19 (pulido final de documentos; modalidad de validación controlada).
+Última actualización: 2026-11-20 (integraciones externas completadas; ventas cerradas hasta cumplir los requisitos legales).
 
 ## Aplicación
 
@@ -27,6 +27,12 @@ Estado real de cada punto, con evidencia. Estados: **Implementado**, **Probado l
 | Flujo comercial completo con 3 plantillas demo | Probado localmente | `demo-templates.spec.ts`; PDFs en `examples/demo-pdfs/` (no versionados); no se crean en producción |
 | Paginación de PDF (seis diseños + plantillas privadas) | Probado localmente · **Verificado en producción** (smoke) | `pagination.test.ts`: 1/5/10/35/100 conceptos; un encabezado por página, sin páginas huérfanas, encabezado compacto de continuación; revisión visual de todas las páginas de las muestras |
 | Estructura declarativa de plantillas privadas | Probado localmente · **Verificado en producción** (smoke) | Variantes de encabezado, tabla y totales, columnas, fichas, aprobación, anticipo/saldo; compatibilidad con configuraciones previas |
+| Compuerta comercial (`SALES_ENABLED` / `SALES_ALLOWLIST`) | **Verificado en producción** | Con credenciales reales cargadas, `POST /api/billing/pack` y `/subscription` devuelven 403 `sales_closed`; 0 pagos y 0 suscripciones creados. Tests `sales-gate.test.ts` |
+| Mercado Pago producción: credenciales y APIs | **Verificado en producción** (sin cargos) | Ver `docs/mercadopago.md` |
+| Mercado Pago producción: cobro y reembolso reales | **Pendiente de aprobación** | Compra controlada (`docs/LANZAMIENTO.md`); falta la cuenta autorizada |
+| Resend | **Verificado** (por el titular) | Correo recibido |
+| ntfy / UptimeRobot | **Verificado** (por el titular) | Notificaciones recibidas; monitor activo cada 5 min sobre `/api/health` |
+| Backups | Locales automáticos (decisión del titular: sin copia externa) | R2 descartado; los backups quedan solo en el VPS |
 | Rate limiting | Implementado | Una réplica. Ver `docs/security-audit.md` |
 | Auditoría de seguridad (código) | Completada localmente | `docs/security-audit.md` |
 
