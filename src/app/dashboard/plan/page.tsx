@@ -5,6 +5,7 @@ import { PlanActions } from "@/components/billing/plan-actions";
 import { Card, PageHeader } from "@/components/dashboard/ui";
 import { isSubscriptionActive } from "@/domain/subscription";
 import { paymentsEnabled } from "@/integrations/mercadopago";
+import { canPurchase } from "@/lib/config/sales";
 import { PLANS, PRICING } from "@/lib/config/plans";
 import { formatArs } from "@/lib/format";
 import { requireUserWithEntitlements } from "@/server/pro";
@@ -74,6 +75,16 @@ export default async function PlanPage({
           className="mb-6 rounded-lg border border-border bg-white px-4 py-3 text-sm text-ink"
         >
           Esa función requiere el plan Pro vigente.
+        </p>
+      )}
+      {paymentsEnabled() && !canPurchase(user.email) && (
+        <p
+          role="status"
+          data-testid="sales-closed"
+          className="mb-6 rounded-lg border border-border bg-white px-4 py-3 text-sm text-muted-foreground"
+        >
+          Las compras todavía no están abiertas. Podés seguir usando el plan gratuito y te
+          avisaremos cuando estén disponibles.
         </p>
       )}
       {!paymentsEnabled() && (

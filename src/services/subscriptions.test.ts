@@ -20,6 +20,9 @@ import {
   startSubscriptionCheckout,
 } from "./subscriptions";
 
+// Estas pruebas ejercitan el flujo de cobro con las ventas abiertas; la compuerta se prueba aparte.
+process.env.SALES_ENABLED = "true";
+
 const enabled = !!process.env.TEST_DATABASE_URL;
 const DOMAIN = "@subs-test.example";
 const T0 = new Date("2026-06-10T12:00:00Z");

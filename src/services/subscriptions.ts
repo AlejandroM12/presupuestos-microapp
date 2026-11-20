@@ -15,7 +15,12 @@ import {
 import { PRICING } from "@/lib/config/plans";
 import { db } from "@/server/db";
 import { NotFoundError } from "./quotes";
-import { requireGateway, returnUrls, SuspiciousPaymentError } from "./billing-common";
+import {
+  assertPurchaseAllowed,
+  requireGateway,
+  returnUrls,
+  SuspiciousPaymentError,
+} from "./billing-common";
 
 export class AlreadySubscribedError extends Error {
   constructor() {
@@ -51,6 +56,7 @@ export async function startSubscriptionCheckout(
   plan: SubscriptionPlan,
   now: Date = new Date(),
 ): Promise<{ url: string }> {
+  assertPurchaseAllowed(user.email);
   const gateway = requireGateway();
 
   const live = await db.subscription.findMany({

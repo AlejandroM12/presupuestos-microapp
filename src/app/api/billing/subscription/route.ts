@@ -3,7 +3,7 @@ import { z } from "zod";
 import { toErrorResponse, readJson } from "@/server/api";
 import { requireApiUser } from "@/server/guards";
 import { RateLimiter } from "@/server/rate-limit";
-import { PaymentsDisabledError } from "@/services/billing-common";
+import { PaymentsDisabledError, SalesClosedError } from "@/services/billing-common";
 import {
   AlreadySubscribedError,
   cancelUserSubscription,
@@ -29,6 +29,15 @@ export async function POST(request: Request) {
     const { url } = await startSubscriptionCheckout(user, plan);
     return NextResponse.json({ url });
   } catch (error) {
+    if (error instanceof SalesClosedError) {
+      return NextResponse.json(
+        {
+          error: "Las compras todavía no están abiertas. Te avisaremos cuando estén disponibles.",
+          code: "sales_closed",
+        },
+        { status: 403 },
+      );
+    }
     if (error instanceof PaymentsDisabledError) {
       return NextResponse.json(
         { error: "Los pagos todavía no están habilitados.", code: "payments_disabled" },

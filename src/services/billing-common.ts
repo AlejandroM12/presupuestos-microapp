@@ -1,10 +1,17 @@
 import { getGateway } from "@/integrations/mercadopago";
 import type { PaymentGateway } from "@/integrations/mercadopago/gateway";
+import { canPurchase } from "@/lib/config/sales";
 import { siteConfig } from "@/lib/config/site";
 
 export class PaymentsDisabledError extends Error {
   constructor() {
     super("Los pagos no están configurados");
+  }
+}
+/** Las compras todavía no están abiertas para esta cuenta (compuerta comercial). */
+export class SalesClosedError extends Error {
+  constructor() {
+    super("Las compras todavía no están abiertas");
   }
 }
 export class AlreadyOwnedError extends Error {
@@ -14,6 +21,11 @@ export class AlreadyOwnedError extends Error {
 }
 /** El pago informado no coincide con lo esperado (importe, moneda o identificador repetido). */
 export class SuspiciousPaymentError extends Error {}
+
+/** Primer control de toda compra: se evalúa antes de tocar el proveedor o la base de datos. */
+export function assertPurchaseAllowed(email: string): void {
+  if (!canPurchase(email)) throw new SalesClosedError();
+}
 
 export function requireGateway(): PaymentGateway {
   const gateway = getGateway();

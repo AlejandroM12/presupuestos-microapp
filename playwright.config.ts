@@ -43,6 +43,8 @@ export default defineConfig({
       ATAJOLAB_WHATSAPP_E164: "5491100000000",
       MERCADOPAGO_WEBHOOK_SECRET: "e2e-webhook-secret",
       MERCADOPAGO_ACCESS_TOKEN: "",
+      // Las pruebas ejercitan los flujos de compra con las ventas abiertas (la compuerta se prueba en Vitest).
+      SALES_ENABLED: "true",
       RATE_LIMIT_LOGIN_PER_IP: "10000",
       CRON_SECRET: "e2e-cron-secret",
     },

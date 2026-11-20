@@ -14,13 +14,15 @@ import {
   AlreadyOwnedError,
   notificationUrl,
   PaymentsDisabledError,
+  assertPurchaseAllowed,
+  SalesClosedError,
   requireGateway,
   returnUrls,
   SuspiciousPaymentError,
 } from "./billing-common";
 import { applyRemoteSubscription, applyRemoteSubscriptionPayment } from "./subscriptions";
 
-export { AlreadyOwnedError, PaymentsDisabledError, SuspiciousPaymentError };
+export { AlreadyOwnedError, PaymentsDisabledError, SalesClosedError, SuspiciousPaymentError };
 
 /**
  * Inicia la compra del Pack Premium. El importe sale siempre de la configuración del servidor
@@ -30,6 +32,7 @@ export async function startPackCheckout(user: {
   id: string;
   email: string;
 }): Promise<{ url: string }> {
+  assertPurchaseAllowed(user.email);
   const gateway = requireGateway();
   const owned = await db.templatePurchase.findUnique({
     where: { userId_product: { userId: user.id, product: PREMIUM_PACK } },

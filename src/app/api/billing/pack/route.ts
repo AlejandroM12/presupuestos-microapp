@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 import { toErrorResponse } from "@/server/api";
 import { requireApiUser } from "@/server/guards";
 import { RateLimiter } from "@/server/rate-limit";
-import { AlreadyOwnedError, PaymentsDisabledError, startPackCheckout } from "@/services/billing";
+import {
+  AlreadyOwnedError,
+  PaymentsDisabledError,
+  SalesClosedError,
+  startPackCheckout,
+} from "@/services/billing";
 
 export const runtime = "nodejs";
 
@@ -21,6 +26,15 @@ export async function POST() {
     const { url } = await startPackCheckout(user);
     return NextResponse.json({ url });
   } catch (error) {
+    if (error instanceof SalesClosedError) {
+      return NextResponse.json(
+        {
+          error: "Las compras todavía no están abiertas. Te avisaremos cuando estén disponibles.",
+          code: "sales_closed",
+        },
+        { status: 403 },
+      );
+    }
     if (error instanceof PaymentsDisabledError) {
       return NextResponse.json(
         { error: "Los pagos todavía no están habilitados.", code: "payments_disabled" },
