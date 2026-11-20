@@ -1,5 +1,6 @@
 import { LIMITS, PRICING } from "@/lib/config/plans";
 import { formatArs } from "@/lib/format";
+import { filled, LEGAL_DATA, placeholder, SERVICE_FACTS } from "./legal-data";
 
 /**
  * Borradores de textos legales. NO son asesoramiento legal: deben ser revisados y completados
@@ -17,8 +18,12 @@ export interface LegalPage {
   sections: LegalSection[];
 }
 
-const HOLDER = "[COMPLETAR: razón social o nombre del titular, CUIT y domicilio legal]";
-const CONTACT = "[COMPLETAR: email de contacto y soporte]";
+const D = LEGAL_DATA;
+const HOLDER =
+  D.holderName.trim() && D.taxId.trim() && D.address.trim()
+    ? `${D.holderName.trim()} (CUIT ${D.taxId.trim()}), con domicilio legal en ${D.address.trim()}`
+    : placeholder("razón social o nombre del titular, CUIT y domicilio legal");
+const CONTACT = filled(D.supportEmail, "email de contacto y soporte");
 
 export const LEGAL_PAGES: LegalPage[] = [
   {
@@ -52,7 +57,7 @@ export const LEGAL_PAGES: LegalPage[] = [
         body: [
           `Gratis: ${LIMITS.freeMonthlyDownloads} descargas de PDF por mes, un diseño y marca de AtajoLab.`,
           `Pack Premium: pago único de ${formatArs(PRICING.premiumPack)}, ${LIMITS.premiumPackMonthlyDownloads} descargas mensuales y diseños premium (ver condiciones del pack).`,
-          `Pro: ${formatArs(PRICING.proMonthly)} por mes o ${formatArs(PRICING.proYearly)} por año, con descargas sujetas a uso razonable (ver condiciones de suscripción). Precios en pesos argentinos [COMPLETAR: indicar si incluyen IVA u otros impuestos según la situación fiscal del titular].`,
+          `Pro: ${formatArs(PRICING.proMonthly)} por mes o ${formatArs(PRICING.proYearly)} por año, con descargas sujetas a uso razonable (ver condiciones de suscripción). Precios en pesos argentinos (${filled(D.priceTaxNote, "indicar si incluyen IVA u otros impuestos según la situación fiscal del titular")}).`,
           "Los pagos se procesan a través de Mercado Pago; no almacenamos datos de tarjetas.",
         ],
       },
@@ -67,19 +72,22 @@ export const LEGAL_PAGES: LegalPage[] = [
         heading: "6. Disponibilidad y responsabilidad",
         body: [
           "Hacemos esfuerzos razonables para mantener el servicio disponible, sin garantizar disponibilidad ininterrumpida.",
-          "[COMPLETAR: limitación de responsabilidad, a definir con asesoramiento legal, respetando la normativa de defensa del consumidor aplicable.]",
+          filled(
+            D.liabilityClause,
+            "limitación de responsabilidad, a definir con asesoramiento legal, respetando la normativa de defensa del consumidor aplicable",
+          ),
         ],
       },
       {
         heading: "7. Derecho de arrepentimiento",
         body: [
-          `Si sos consumidor, podés ejercer el derecho de revocación dentro de los 10 días corridos de la contratación, conforme a la normativa argentina de defensa del consumidor [COMPLETAR: confirmar alcance con asesor legal para servicios digitales]. Se gestiona escribiendo a ${CONTACT}.`,
+          `Si sos consumidor, podés ejercer el derecho de revocación dentro de los 10 días corridos de la contratación, conforme a la normativa argentina de defensa del consumidor. Se gestiona escribiendo a ${CONTACT}.`,
         ],
       },
       {
         heading: "8. Ley aplicable",
         body: [
-          "Estos términos se rigen por las leyes de la República Argentina. [COMPLETAR: jurisdicción].",
+          `Estos términos se rigen por las leyes de la República Argentina. Las controversias se someten a ${filled(D.jurisdiction, "jurisdicción")}.`,
         ],
       },
     ],
@@ -112,14 +120,17 @@ export const LEGAL_PAGES: LegalPage[] = [
       {
         heading: "4. Proveedores",
         body: [
-          "Mercado Pago (pagos), Resend (correo transaccional), Hetzner (alojamiento) y Cloudflare (DNS). [COMPLETAR: verificar ubicación de servidores y transferencias internacionales de datos].",
+          `Mercado Pago (pagos), Resend (correo transaccional), Hetzner (alojamiento, servidores en ${SERVICE_FACTS.serverLocation}) y Cloudflare (DNS).`,
         ],
       },
       {
         heading: "5. Tus derechos",
         body: [
           "Podés acceder, rectificar y suprimir tus datos (Ley 25.326). Desde Configuración podés exportar tus datos y eliminar tu cuenta. La Agencia de Acceso a la Información Pública es el órgano de control.",
-          "[COMPLETAR: inscripción de la base de datos, si corresponde.]",
+          filled(
+            D.dataRegistration,
+            "inscripción de la base de datos ante la AAIP, o aclaración de que no corresponde",
+          ),
         ],
       },
       {
@@ -168,13 +179,13 @@ export const LEGAL_PAGES: LegalPage[] = [
       {
         heading: "5. Reembolsos",
         body: [
-          "[COMPLETAR: política de reembolsos para períodos ya iniciados, a definir con el titular y su asesor.] El derecho de arrepentimiento se detalla en los términos y condiciones.",
+          `${filled(D.refundPolicy, "política de reembolsos para períodos ya iniciados, a definir con el titular y su asesor")} El derecho de arrepentimiento se detalla en los términos y condiciones.`,
         ],
       },
       {
         heading: "6. Cambios de precio",
         body: [
-          "Te avisaremos con anticipación razonable [COMPLETAR: plazo] antes de cualquier cambio de precio; podrás cancelar antes de que se aplique.",
+          `Te avisaremos con ${filled(D.priceChangeNotice, "plazo de aviso")} de anticipación antes de cualquier cambio de precio; podrás cancelar antes de que se aplique.`,
         ],
       },
     ],
@@ -206,7 +217,7 @@ export const LEGAL_PAGES: LegalPage[] = [
       {
         heading: "4. Alcance",
         body: [
-          "[COMPLETAR: alcance temporal de «permanente» (vida útil del servicio), a definir por el titular.]",
+          `El acceso es permanente ${filled(D.packScope, "alcance temporal de «permanente», p. ej. mientras el servicio esté disponible")}.`,
         ],
       },
     ],
@@ -247,25 +258,38 @@ export const LEGAL_PAGES: LegalPage[] = [
         heading: "1. Datos personales",
         body: [
           "Al eliminar tu cuenta borramos tu perfil, clientes, presupuestos guardados, sesiones, tokens y registros de uso. Los borradores locales están solo en tu navegador.",
-          "Los backups pueden conservar copias hasta [COMPLETAR: días de retención de backups] antes de eliminarse por rotación.",
+          `Los backups pueden conservar copias hasta ${SERVICE_FACTS.backupRetentionDays} días antes de eliminarse por rotación.`,
         ],
       },
       {
         heading: "2. Registros financieros",
         body: [
           "Los registros de pagos y suscripciones (importes, fechas, estados y referencias de Mercado Pago) se conservan anonimizados, sin vínculo con tu cuenta, para conciliación y obligaciones contables.",
-          "[COMPLETAR: plazo de conservación, a confirmar con el contador; como referencia, la normativa comercial argentina suele exigir conservar documentación contable por 10 años.]",
+          `Plazo de conservación de los registros financieros: ${filled(D.financialRetention, "plazo, a confirmar con el contador (la normativa comercial suele exigir 10 años para documentación contable)")}.`,
         ],
       },
       {
         heading: "3. Registros técnicos",
         body: [
-          "Los logs de seguridad y operación se conservan por períodos acotados [COMPLETAR: días] y no incluyen el contenido de tus presupuestos.",
+          "Los logs de seguridad y operación se conservan por períodos acotados (rotación automática de los últimos archivos de registro) y no incluyen el contenido de tus presupuestos.",
         ],
       },
     ],
   },
 ];
+
+/** Una página está completa cuando no quedan marcadores [COMPLETAR] visibles. */
+export function isLegalPageComplete(page: LegalPage): boolean {
+  return !JSON.stringify(page).includes("[COMPLETAR");
+}
+
+export function pendingLegalFields(): string[] {
+  const hints = new Set<string>();
+  for (const page of LEGAL_PAGES) {
+    for (const m of JSON.stringify(page).matchAll(/\[COMPLETAR: ([^\]]+)\]/g)) hints.add(m[1]);
+  }
+  return [...hints];
+}
 
 export function getLegalPage(slug: string): LegalPage | undefined {
   return LEGAL_PAGES.find((p) => p.slug === slug);

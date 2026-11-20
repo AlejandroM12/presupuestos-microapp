@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { Check } from "lucide-react";
 import { BuyPackButton } from "@/components/billing/buy-pack-button";
@@ -181,6 +182,26 @@ export default async function PlanPage({
           )}
         </div>
       </Card>
+
+      <p className="mt-4 text-xs text-muted-foreground" data-testid="purchase-terms">
+        Al comprar aceptás los{" "}
+        <Link href="/legal/terminos" className="underline">
+          Términos y condiciones
+        </Link>
+        , las{" "}
+        <Link href="/legal/suscripcion" className="underline">
+          condiciones de suscripción
+        </Link>
+        , las{" "}
+        <Link href="/legal/pack-premium" className="underline">
+          condiciones del Pack Premium
+        </Link>{" "}
+        y la{" "}
+        <Link href="/legal/uso-razonable" className="underline">
+          política de uso razonable
+        </Link>
+        . Los pagos los procesa Mercado Pago; no guardamos datos de tarjetas.
+      </p>
 
       <h2 className="mb-3 mt-8 font-display text-lg font-semibold text-ink">Historial de pagos</h2>
       {payments.length === 0 ? (
