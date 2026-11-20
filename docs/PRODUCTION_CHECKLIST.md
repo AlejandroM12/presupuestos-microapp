@@ -99,6 +99,12 @@ Estado real de cada punto, con evidencia. Estados: **Implementado**, **Probado l
 - Smoke de producción (16 verificaciones, con densidad compacta), cuentas y plantilla de prueba eliminadas. Agendia responde 200.
 - Pruebas omitidas documentadas en `docs/development.md`: 3 generadores de muestras de Vitest (se activan con variables de entorno) y 3 flujos de demostración en mobile de Playwright (cubiertos en desktop; mobile se prueba en otros specs).
 
+## Despliegue de la preparación de campañas (2026-11-20)
+
+- Imagen `latest` de `71d3595` (CI y Docker en verde); backup `presupuestos-20261120T214208Z.dump`; sin migraciones nuevas. Rollback: imagen anterior etiquetada `rollback-20261120d`.
+- Verificado en producción: landing, `/para/talleres|construccion|tecnicos`, `/crear`, imágenes sociales 1200×630, favicon, sitemap y enlaces con UTM responden 200 sin redirecciones, también con los agentes de Facebook, WhatsApp, Instagram, TikTok y Twitter; Agendia sigue en 200.
+- Medición: sin identificadores configurados no se carga ningún script de terceros. Pendiente crear y cargar `META_PIXEL_ID`, `TIKTOK_PIXEL_ID` y `GA4_MEASUREMENT_ID` (ver `docs/MARKETING.md`). Las ventas siguen cerradas.
+
 ## Modalidad actual
 
 **Validación controlada.** La app está pública en HTTPS con pagos y correos deshabilitados. No hay mocks de compra en producción. No abrir lanzamiento comercial hasta Mercado Pago sandbox, Resend, backups externos, alertas y textos legales.
