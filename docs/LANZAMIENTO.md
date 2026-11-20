@@ -24,11 +24,11 @@ Estado al 2026-11-20. Los precios no cambian: Pack Premium $9.900 ARS (pago úni
 
 Valida el flujo completo con dinero real y una cuenta tuya.
 
-1. Tener una cuenta de la app (registrada en producción) y pasarme su email para autorizarla (o ejecutar `./scripts/set-secret.sh --recreate SALES_ALLOWLIST` en el VPS con ese email).
+1. **Cuenta de la app y cuenta pagadora**: la cuenta que compra debe estar registrada en producción y su email conviene que **coincida con el email de la cuenta de Mercado Pago pagadora** (que debe ser distinta de la recaudadora; la suscripción se asocia al `payer_email`). Autorizarla con `./scripts/set-secret.sh --recreate SALES_ALLOWLIST` (o pasarme el email y lo hago yo).
 2. Iniciar sesión con esa cuenta → **Mi plan** → "Comprar · $9.900" → Checkout Pro.
 3. **Pagar desde una cuenta o medio de pago distinto de la cuenta vendedora**: Mercado Pago no permite que el vendedor se pague a sí mismo.
 4. Verificar: la página de retorno informa el estado; el Pack aparece activo recién cuando llega el webhook (no por volver a la URL de éxito); llega el correo de confirmación (Resend).
-   Registro en servidor: `SELECT status, amount FROM payments;` y `SELECT status FROM webhook_events ORDER BY "receivedAt" DESC LIMIT 5;` (deben mostrar `APPROVED` y `PROCESSED`).
+   Estado en el servidor sin exponer datos: `./scripts/billing-status.sh`. Detalle: `SELECT status, amount FROM payments;` y `SELECT status FROM webhook_events ORDER BY "receivedAt" DESC LIMIT 5;` (deben mostrar `APPROVED` y `PROCESSED`).
 5. **Reembolso** desde el panel de Mercado Pago (Actividad → el pago → Devolver dinero) y verificar que el Pack se revoca (`REFUNDED`). Es la validación de la reversión de beneficios. Mercado Pago puede retener su comisión en reembolsos: consultar sus condiciones.
 6. Opcional: repetir con **Pro mensual** ($5.900): la autorización se hace en Mercado Pago; la primera cuota se cobra con una demora (hasta ~1 hora según la documentación) y recién entonces se activa Pro. Probar luego "Cancelar suscripción" y verificar que el acceso se mantiene hasta fin de período.
 
