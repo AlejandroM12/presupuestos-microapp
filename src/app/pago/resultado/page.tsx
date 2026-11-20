@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckCircle2, Clock, XCircle } from "lucide-react";
+import { TrackEvent } from "@/components/analytics/track-event";
 import { Logo } from "@/components/marketing/logo";
+import { PRICING } from "@/lib/config/plans";
 import { PaymentStatusPoller } from "@/components/billing/payment-status-poller";
 import { buttonVariants } from "@/components/ui/button";
 import { getGateway } from "@/integrations/mercadopago";
@@ -44,11 +46,22 @@ export default async function ResultPage({ searchParams }: { searchParams: Promi
   }
 
   let status: "APPROVED" | "REJECTED" | "CANCELLED" | "REFUNDED" | "PENDING" | null;
+  // Datos de la compra confirmada para la medición (solo identificador opaco, plan e importe).
+  let conversion: { id: string; plan: string; value: number } | null = null;
   if (isPro) {
     const sub = await currentSubscription(user.id);
     status = sub && isSubscriptionActive(sub) ? "APPROVED" : sub ? "PENDING" : null;
+    if (sub) {
+      conversion = {
+        id: sub.id,
+        plan: sub.plan === "YEARLY" ? "pro_yearly" : "pro_monthly",
+        value: sub.plan === "YEARLY" ? PRICING.proYearly : PRICING.proMonthly,
+      };
+    }
   } else {
-    status = (await latestPackPayment(user.id))?.status ?? null;
+    const pack = await latestPackPayment(user.id);
+    status = pack?.status ?? null;
+    if (pack) conversion = { id: pack.id, plan: "pack", value: PRICING.premiumPack };
   }
   const product = isPro ? "plan Pro" : "Pack Premium";
 
@@ -61,6 +74,19 @@ export default async function ResultPage({ searchParams }: { searchParams: Promi
         <div className="w-full max-w-md rounded-2xl border border-border bg-white p-8 text-center">
           {status === "APPROVED" ? (
             <>
+              {/* La compra se informa SOLO cuando nuestros registros la confirman (no por visitar la URL de éxito). */}
+              {conversion && (
+                <TrackEvent
+                  name="purchase"
+                  once={`purchase_${conversion.id}`}
+                  params={{
+                    plan: conversion.plan,
+                    value: conversion.value,
+                    currency: "ARS",
+                    transaction_id: conversion.id,
+                  }}
+                />
+              )}
               <CheckCircle2 className="mx-auto size-10 text-brand" aria-hidden />
               <h1 className="mt-4 font-display text-2xl font-semibold text-ink">
                 ¡{isPro ? "Plan Pro activado" : "Pack Premium activado"}!

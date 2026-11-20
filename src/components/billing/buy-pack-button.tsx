@@ -1,5 +1,7 @@
 "use client";
 
+import { track } from "@/lib/analytics/client";
+import { PRICING } from "@/lib/config/plans";
 import { Loader2, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -45,6 +47,7 @@ export function BuyPackButton({
         error?: string;
       } | null;
       if (response.ok && data?.url) {
+        track("checkout_start", { plan: "pack", value: PRICING.premiumPack, currency: "ARS" });
         window.location.assign(data.url);
         return;
       }

@@ -1,5 +1,7 @@
 "use client";
 
+import { track } from "@/lib/analytics/client";
+import { PRICING } from "@/lib/config/plans";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -43,6 +45,11 @@ export function PlanActions({
         error?: string;
       } | null;
       if (response.ok && data?.url) {
+        track("checkout_start", {
+          plan: plan === "MONTHLY" ? "pro_monthly" : "pro_yearly",
+          value: plan === "MONTHLY" ? PRICING.proMonthly : PRICING.proYearly,
+          currency: "ARS",
+        });
         window.location.assign(data.url);
         return;
       }

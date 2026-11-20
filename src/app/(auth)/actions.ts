@@ -1,7 +1,7 @@
 "use server";
 
 import { AuthError } from "next-auth";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { signIn, signOut } from "@/auth";
 import {
@@ -105,6 +105,8 @@ async function registerImpl(form: FormData): Promise<FormState> {
     console.error("register_failed", error instanceof Error ? error.message : "unknown");
     return { message: "No pudimos crear la cuenta. Intentá nuevamente." };
   }
+  // Señal efímera y sin datos personales para el evento de "registro completado" en el navegador.
+  (await cookies()).set("ph_signup", "1", { maxAge: 120, path: "/", sameSite: "lax" });
   return signInOrMessage(parsed.data.email, parsed.data.password, safeNext(text(form, "next")));
 }
 

@@ -25,6 +25,7 @@ import {
 } from "@/lib/pdf-client";
 import { LIMITS } from "@/lib/config/plans";
 import { looksLikeCustomTemplateId } from "@/domain/custom-template/access";
+import { isFirst, track } from "@/lib/analytics/client";
 import { useEntitlements } from "@/lib/use-entitlements";
 import { usePrivateTemplates } from "@/lib/use-private-templates";
 import { cn } from "@/lib/utils";
@@ -144,6 +145,15 @@ function EditorForm({
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const values = useWatch({ control }) as QuoteDraft;
+
+  // Medición de activación (sin contenido del presupuesto): inicio del editor y primer presupuesto válido.
+  useEffect(() => {
+    track("editor_start");
+  }, []);
+  const quoteIsValid = useMemo(() => quoteSchema.safeParse(values).success, [values]);
+  useEffect(() => {
+    if (quoteIsValid && isFirst("quote_valid")) track("quote_first_valid");
+  }, [quoteIsValid]);
   const totals = useMemo(
     () =>
       calculateTotals({
@@ -215,6 +225,7 @@ function EditorForm({
         }
       }
       saveBlob(blob, fileName);
+      track("pdf_download", { first: isFirst("pdf") });
       void refreshEntitlements();
     } catch (err) {
       setShareError(err instanceof PdfRequestError ? err.message : "No pudimos generar el PDF.");

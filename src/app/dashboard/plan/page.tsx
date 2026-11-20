@@ -6,6 +6,7 @@ import { PlanActions } from "@/components/billing/plan-actions";
 import { Card, PageHeader } from "@/components/dashboard/ui";
 import { isSubscriptionActive } from "@/domain/subscription";
 import { paymentsEnabled } from "@/integrations/mercadopago";
+import { TrackEvent } from "@/components/analytics/track-event";
 import { canPurchase } from "@/lib/config/sales";
 import { PLANS, PRICING } from "@/lib/config/plans";
 import { formatArs } from "@/lib/format";
@@ -69,6 +70,7 @@ export default async function PlanPage({
 
   return (
     <>
+      <TrackEvent name="plans_view" />
       <PageHeader title="Mi plan" description="Tu plan actual, renovación y compras." />
       {need === "pro" && (
         <p
