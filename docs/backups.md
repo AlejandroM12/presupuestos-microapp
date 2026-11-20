@@ -17,6 +17,8 @@ Scripts en `deploy/scripts/` (verificados en local: backup de una base con datos
 - Si la base está en una red Docker, definir `PG_DOCKER_NETWORK`.
 - `deploy.sh` ejecuta un backup antes de cada despliegue y aborta si falla.
 
+**Decisión del titular (2026-11-20): no se usa copia externa (Cloudflare R2 descartado).** Los backups diarios quedan solo en el VPS (retención de 14 días) y `backup.sh` seguirá emitiendo la advertencia de que no hay copia externa. Riesgo aceptado: una pérdida total del servidor implica perder los datos; se recomienda, como mínimo, descargar periódicamente un backup a otro equipo (`scp`).
+
 Validado en local: backup con verificación (32 objetos TABLE), fallo con alerta ante base inaccesible, y subida con rclone a un destino de tipo `local`. **No validado** contra un destino remoto real ni en el VPS: falta definir el almacenamiento externo (ver `docs/PRODUCTION_CHECKLIST.md`).
 
 Programación diaria (cron del servidor):
