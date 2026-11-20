@@ -51,6 +51,7 @@ Guía completa: [`docs/development.md`](docs/development.md).
 ## Documentación
 
 - [Arquitectura](docs/architecture.md)
+- [Marketing y campañas (URLs con UTM, eventos, medición)](docs/MARKETING.md)
 - [Desarrollo local](docs/development.md)
 - [Despliegue](docs/deploy.md)
 - [Mercado Pago](docs/mercadopago.md)
